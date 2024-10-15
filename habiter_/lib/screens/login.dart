@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:habiter_/screens/signup.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,7 +16,7 @@ class LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromRGBO(39, 46, 238, 0.08),
-      body: Container(
+      body: SizedBox(
         width: double.infinity,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -23,11 +24,9 @@ class LoginScreenState extends State<LoginScreen> {
             const SizedBox(
               height: 70,
             ),
-            Container(
-              child: Image.asset(
-                'assets/images/Splash.png',
-                scale: 1.75,
-              ),
+            Image.asset(
+              'assets/images/Splash.png',
+              scale: 1.75,
             ),
             const SizedBox(
               height: 30,
@@ -39,18 +38,18 @@ class LoginScreenState extends State<LoginScreen> {
                   color: Colors.white,
                   fontWeight: FontWeight.bold),
             ),
-            SizedBox(
+            const SizedBox(
               height: 20,
             ),
             Form(
                 key: _formKey,
                 child: Column(children: [
                   Container(
-                    margin: const EdgeInsets.fromLTRB(15, 15, 15, 8),
+                    margin: const EdgeInsets.fromLTRB(15, 15, 15, 3),
                     child: TextFormField(
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: Color.fromRGBO(82, 82, 82, 1),
+                        fillColor: const Color.fromRGBO(82, 82, 82, 1),
                         hintText: 'Email Address',
                         hintStyle: GoogleFonts.rubik(
                             fontSize: 18, color: Colors.white),
@@ -61,11 +60,11 @@ class LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   Container(
-                    margin: const EdgeInsets.all(15),
+                    margin: const EdgeInsets.fromLTRB(15, 15, 15, 15),
                     child: TextFormField(
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: Color.fromRGBO(82, 82, 82, 1),
+                        fillColor: const Color.fromRGBO(82, 82, 82, 1),
                         hintText: 'Password',
                         hintStyle: GoogleFonts.rubik(
                             fontSize: 18, color: Colors.white),
@@ -75,15 +74,47 @@ class LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  Container(
+                  SizedBox(
                     width: 330,
                     height: 55,
                     child: TextButton(
                       onPressed: () {},
-                      child: Text('Login'),
                       style: TextButton.styleFrom(
-                        backgroundColor: Color.fromRGBO(141, 74, 248, 1),
+                        backgroundColor: const Color.fromRGBO(141, 74, 248, 1),
                       ),
+                      child: Text(
+                        'Log In',
+                        style: GoogleFonts.nunito(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(
+                    height: 50,
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const SignupScreen())),
+                    child: RichText(
+                      text: TextSpan(children: [
+                        TextSpan(
+                            text: "DON’T HAVE AN ACCOUNT? ",
+                            style: GoogleFonts.nunito(
+                                color: const Color.fromRGBO(161, 164, 178, 1),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w200)),
+                        TextSpan(
+                            text: "SIGN UP",
+                            style: GoogleFonts.nunito(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w400,
+                                decoration: TextDecoration.underline))
+                      ]),
                     ),
                   )
                 ]))

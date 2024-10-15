@@ -9,18 +9,18 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromRGBO(39, 46, 238, 0.12),
-      body: Container(
+      backgroundColor: Colors.black,
+      body: SizedBox(
         height: double.infinity,
         width: double.infinity,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Container(
+            SizedBox(
               height: 270,
               child: Image.asset('assets/images/welcome.png'),
             ),
-            SizedBox(height: 100,),
+            const SizedBox(height: 100,),
             Container(
               width: double.infinity,
               decoration: const BoxDecoration(
@@ -42,7 +42,7 @@ class WelcomeScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    SizedBox(height: 60,),
+                    const SizedBox(height: 60,),
                     AnimatedTextKit(
                       animatedTexts: [
                         TyperAnimatedText(
@@ -59,7 +59,7 @@ class WelcomeScreen extends StatelessWidget {
                       displayFullTextOnTap: true,
                       stopPauseOnTap: true,
                     ),
-                    SizedBox(height: 40,),
+                    const SizedBox(height: 40,),
                     ElevatedButton(
                       onPressed: () {
                         Navigator.pushReplacement(
@@ -87,7 +87,7 @@ class WelcomeScreen extends StatelessWidget {
                             ),
                           )),
                     ),
-                    SizedBox(height: 30,)
+                    const SizedBox(height: 30,)
                   ],
                 ),
               ),

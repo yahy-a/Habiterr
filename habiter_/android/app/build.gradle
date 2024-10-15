@@ -42,3 +42,14 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Firebase Analytics dependency
+    implementation 'com.google.firebase:firebase-analytics:21.2.0'
+
+    // Other dependencies you may have
+    // Example: AndroidX Core
+    implementation 'androidx.core:core-ktx:1.7.0'
+}
+
+apply plugin: 'com.google.gms.google-services'
