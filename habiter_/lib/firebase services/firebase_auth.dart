@@ -2,7 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class FirebaseAuthServices {
 
-  FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   Future<User?> signupWithEmailAndPassword(String email, String password) async{
 
@@ -12,6 +12,7 @@ class FirebaseAuthServices {
     }catch(e){
       print("Error $e");
     }
+    return null;
   }
 
   Future<User?> signInWithEmailAndPassword(String email, String password) async{
@@ -21,5 +22,6 @@ class FirebaseAuthServices {
     }catch(e){
       print("Error $e");
     }
+    return null;
   }
 }
