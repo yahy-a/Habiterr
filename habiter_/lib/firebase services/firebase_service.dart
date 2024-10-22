@@ -1,76 +1,66 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
 import 'package:habiter_/models/habit.dart';
 
-class DatabaseHelper {
-  static final DatabaseHelper _instance = DatabaseHelper._internal();
-  static Database? _database;
+class FirebaseService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  factory DatabaseHelper() {
-    return _instance;
-  }
+  // Get habits collection reference
+  CollectionReference get _habits => _firestore.collection('habits');
 
-  DatabaseHelper._internal();
+  // Get entries collection reference for a habit
+  CollectionReference _entriesCollection(String habitId) =>
+      _habits.doc(habitId).collection('entries');
 
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDatabase();
-    return _database!;
-  }
+  // Get current user ID
+  String? get currentUserId => _auth.currentUser?.uid;
 
-  Future<Database> _initDatabase() async {
-    String path = join(await getDatabasesPath(), 'habits.db');
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: (db, version) {
-        return db.execute(
-          'CREATE TABLE habits(id INTEGER PRIMARY KEY AUTOINCREMENT, userId TEXT, name TEXT, detail TEXT, isCompleted INTEGER)',
-        );
-      },
-    );
-  }
+  Future<void> addHabit(
+      String name, String detail, int numberOfDays, String frequency) async {
+    if (currentUserId == null) return;
 
-  Future<void> insertHabit(Habit habit) async {
-    final db = await database;
-    await db.insert(
-      'habits',
-      habit.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
-  Future<List<Habit>> getHabits() async {
-    final db = await database;
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final List<Map<String, dynamic>> maps =
-          await db.query('habits', where: 'userId = ?', whereArgs: [user.uid]);
-      return List.generate(maps.length, (i) {
-        return Habit.fromMap(maps[i]);
+    DocumentReference? habitsRef;
+    try {
+      habitsRef = await _habits.add({
+        'userId': currentUserId,
+        'name': name,
+        'detail': detail,
+        'frequency': frequency,
+        'numberOfDays': numberOfDays,
+        'createdAt': FieldValue.serverTimestamp(),
       });
-    }else{
-      return [];
+    } catch (e) {
+      // ignore: avoid_print
+      print('Error adding habit: $e');
+      return;
     }
-  }
+    final batch = _firestore.batch();
+    if (frequency == 'daily') {
+      final now = DateTime.now();
 
-  Future<void> updateHabit(Habit habit) async {
-    final db = await database;
-    await db.update(
-      'habits',
-      habit.toMap(),
-      where: 'id = ?',
-      whereArgs: [habit.id],
-    );
-  }
-
-  Future<void> deleteHabit(int id) async {
-    final db = await database;
-    await db.delete(
-      'habits',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+      for (int i = 0; i < numberOfDays; i++) {
+        final date = now.add(Duration(days: i));
+        final entryRef = _entriesCollection(habitsRef.id).doc();
+        batch.set(entryRef, {
+          'habitId': habitsRef.id,
+          'date': date,
+          'isCompleted': false,
+          'streak': 0
+        });
+      }
+    }
+    try {
+      await batch.commit();
+    } catch (e) {
+      // ignore: avoid_print
+      print('Error committing batch: $e');
+      try {
+        await habitsRef.delete();
+      } catch (deleteError) {
+        // ignore: avoid_print
+        print('Error deleting habit after failed batch commit: $deleteError');
+      }
+    }
   }
 }

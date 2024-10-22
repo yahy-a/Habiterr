@@ -3,6 +3,8 @@ class Habit {
   final String userId;
   final String name; // Name of the habit
   final String detail; // Details about the habit
+  final int numberOfDays; // Number of days for the habit
+  final String frequency; // Frequency of the habit
   bool isCompleted; // Indicates if the habit is completed
 
   Habit({
@@ -10,6 +12,8 @@ class Habit {
     required this.userId,
     required this.name,
     this.isCompleted = false,
+    required this.numberOfDays,
+    required this.frequency,
     required this.detail,
   });
 
@@ -20,6 +24,8 @@ class Habit {
       'userId':userId,
       'name': name,
       'detail': detail,
+      'frequency': frequency,
+      'numberOfDays': numberOfDays,
       'isCompleted': isCompleted ? 1 : 0, // Convert bool to int for SQLite
     };
   }
@@ -31,6 +37,8 @@ class Habit {
       userId: map['userId'],
       name: map['name'],
       detail: map['detail'],
+      frequency: map['frequency'],
+      numberOfDays: map['numberOfDays'],
       isCompleted: map['isCompleted'] == 1, // Convert int back to bool
     );
   }
