@@ -219,4 +219,6 @@ class FirebaseService {
       return 0;
     }
   }
+
+  Future<void> deleteHabit(String habitId) async {}
 }

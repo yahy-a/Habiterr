@@ -9,7 +9,7 @@ void main() async{
   await Firebase.initializeApp();
   runApp(
     ChangeNotifierProvider(
-      create: (context) => HabitsProvider(),
+      create: (context) => HabitProvider(),
       child: const MyApp(),
     )
   );
