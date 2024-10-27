@@ -53,4 +53,19 @@ class HabitProvider with ChangeNotifier {
     await _firebaseService.deleteHabit(habitId);
     notifyListeners();
   }
+
+  /// Gets the overall best streak for all habits 
+  Future<int> getOverallBestStreak() async {
+    return await _firebaseService.getOverallBestStreak();
+  }
+
+  /// Gets the overall streak for all habits
+  Future<int> getOverallStreak() async {
+    return await _firebaseService.getOverAllStreak();
+  }
+
+  Future<int> getHabitBestStreak(String habitId) async {
+    return await _firebaseService.getHabitBestStreak(habitId);
+  }
+
 }

@@ -10,7 +10,7 @@ void main() async{
   runApp(
     ChangeNotifierProvider(
       create: (context) => HabitProvider(),
-      child: const MyApp(),
+      child: const MyApp(), 
     )
   );
 }

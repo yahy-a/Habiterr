@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:habiter_/screens/home.dart';
 import 'package:habiter_/screens/login.dart';
 
 class WelcomeScreen extends StatelessWidget {
@@ -65,7 +66,7 @@ class WelcomeScreen extends StatelessWidget {
                         Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                                builder: (context) => const LoginScreen()));
+                                builder: (context) => const HomeScreen()));
                       },
                       style: ElevatedButton.styleFrom(
                           backgroundColor:

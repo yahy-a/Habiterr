@@ -14,6 +14,9 @@ class FirebaseService {
   /// This collection stores all habits for all users.
   CollectionReference get _habits => _firestore.collection('habits');
 
+  CollectionReference get _overallStreaks =>
+      _firestore.collection('overallStreaks');
+
   /// Get a reference to the 'entries' subcollection for a specific habit.
   /// Each habit has its own 'entries' subcollection to track daily progress.
   /// @param habitId The unique identifier of the habit
@@ -41,6 +44,7 @@ class FirebaseService {
         'name': name,
         'detail': detail,
         'frequency': frequency,
+        'bestStreak': 0,
         'numberOfDays': numberOfDays,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -220,5 +224,100 @@ class FirebaseService {
     }
   }
 
-  Future<void> deleteHabit(String habitId) async {}
+  Future<int> getOverAllStreak() async {
+    final habits =
+        await _habits.where('userId', isEqualTo: currentUserId).get();
+    int overallStreak = await getHabitStreak(habits.docs.first.id);
+    for (var habit in habits.docs) {
+      final habitStreak = await getHabitStreak(habit.id);
+      if (habitStreak < overallStreak) {
+        overallStreak = habitStreak;
+      }
+    }
+    return overallStreak;
+  }
+
+  Future<int> getOverallBestStreak() async {
+    final currentOverallStreak = await getOverAllStreak();
+    final overallStreakDoc = await _overallStreaks.doc(currentUserId).get();
+
+    int bestStreak = currentOverallStreak;
+
+    if (overallStreakDoc.exists) {
+      final overallStreakData = overallStreakDoc.data() as Map<String, dynamic>;
+      int previousBestStreak = overallStreakData['streak'] ?? 0;
+
+      if (currentOverallStreak > previousBestStreak) {
+        bestStreak = currentOverallStreak;
+        await _overallStreaks.doc(currentUserId).set({'streak': bestStreak});
+      } else {
+        bestStreak = previousBestStreak;
+      }
+    } else {
+      await _overallStreaks.doc(currentUserId).set({'streak': bestStreak});
+    }
+
+    return bestStreak;
+  }
+
+    Future<int> getHabitBestStreak(String habitId) async {
+      try {
+        final habitDoc = await _habits.doc(habitId).get();
+        if (!habitDoc.exists) {
+          throw Exception('Habit not found');
+        }
+        
+        final habitData = habitDoc.data() as Map<String, dynamic>;
+        final storedBestStreak = habitData['bestStreak'] ?? 0;
+        final currentStreak = await getHabitStreak(habitId);
+
+        if (currentStreak > storedBestStreak) {
+          await updateHabitBestStreak(habitId, currentStreak);
+          return currentStreak;
+        }
+
+        return storedBestStreak;
+      } catch (e) {
+        // ignore: avoid_print
+        print('Error getting habit best streak: $e');
+        return 0;
+      }
+    }
+
+    Future<void> updateHabitBestStreak(String habitId, int bestStreak) async {
+      try {
+        await _habits.doc(habitId).update({'bestStreak': bestStreak});
+      } catch (e) {
+        // ignore: avoid_print
+        print('Error updating habit best streak: $e');
+        rethrow; // Re-throw the error for the calling function to handle if necessary
+      }
+    }
+
+  /// Deletes a habit and all its associated entries from Firestore.
+  /// @param habitId The unique identifier of the habit to be deleted.
+  /// @return A Future that completes when the deletion is finished.
+  Future<void> deleteHabit(String habitId) async {
+    // Create a new write batch for atomic operations on entries
+    final batch = _firestore.batch();
+
+    try {
+      // Fetch all entries associated with the habit
+      final entries = await _entriesCollection(habitId).get();
+      // Iterate through each entry and add a delete operation to the batch
+      for (var doc in entries.docs) {
+        batch.delete(doc.reference);
+      }
+      // Execute the batch operation to delete all entries atomically
+      await batch.commit();
+      // After all entries are deleted, remove the main habit document
+      await _habits.doc(habitId).delete();
+    } catch (e) {
+      // If any error occurs during the deletion process
+      // ignore: avoid_print
+      print('Error deleting habit: $e');
+      // Re-throw the error as an exception for the caller to handle
+      throw Exception("Error deleting habit :$e");
+    }
+  }
 }
