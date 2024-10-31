@@ -33,60 +33,113 @@ class FirebaseService {
   /// @param numberOfDays The duration for which the habit should be tracked
   /// @param frequency How often the habit should be performed (e.g., 'daily')
   Future<void> addHabit(
-      String name, String detail, int numberOfDays, String frequency) async {
-    if (currentUserId == null) return;
+      String name, String detail, int numberOfDays, String frequency, int? selectedWeekDay, int? selectedMonthDay) async {
+    if (currentUserId == null) throw Exception('User not authenticated');
+    
+    // Validate inputs
+    if (frequency == 'Weekly' && selectedWeekDay == null) {
+      throw ArgumentError('Weekly frequency requires a selected day');
+    }
+    if (frequency == 'Monthly' && selectedMonthDay == null) {
+      throw ArgumentError('Monthly frequency requires a selected day');
+    }
 
-    DocumentReference? habitsRef;
+    DocumentReference habitDoc;
     try {
-      // Add the main habit document to Firestore
-      habitsRef = await _habits.add({
+      habitDoc = await _habits.add({
         'userId': currentUserId,
         'name': name,
         'detail': detail,
         'frequency': frequency,
         'bestStreak': 0,
+        'currentStreak': 0,
         'numberOfDays': numberOfDays,
         'createdAt': FieldValue.serverTimestamp(),
       });
-    } catch (e) {
-      // ignore: avoid_print
-      print('Error adding habit: $e');
+      print('Document added with ID: ${habitDoc.id}'); // Add this
+
+
+      await addEntries(
+        habitId: habitDoc.id, 
+        numberOfDays: numberOfDays, 
+        frequency: frequency, 
+        selectedWeekDay: selectedWeekDay, 
+        selectedMonthDay: selectedMonthDay
+      );
+
       return;
+    } catch (e) {
+      throw Exception('Failed to add habit: $e');
     }
+  }
 
-    // Use a batch write to efficiently create multiple entries
+  Future<void> addEntries({
+    required String habitId,
+    required int numberOfDays,
+    required String frequency,
+    int? selectedWeekDay,
+    int? selectedMonthDay,
+  }) async {
     final batch = _firestore.batch();
+    final now = DateTime.now();
 
-    // For daily habits, create an entry for each day in the tracking period
-    if (frequency == 'daily') {
-      final now = DateTime.now();
-
-      for (int i = 0; i < numberOfDays; i++) {
-        final date = now.add(Duration(days: i));
-        final entryRef = _entriesCollection(habitsRef.id).doc();
-        batch.set(entryRef, {
-          'habitId': habitsRef.id,
-          'date': date,
-          'isCompleted': false,
-          'streak': 0
-        });
-      }
-    }
-
-    // Commit the batch write to Firestore
     try {
+      switch (frequency.toLowerCase()) {
+        case 'daily':
+          for (int i = 0; i < numberOfDays; i++) {
+            final date = now.add(Duration(days: i));
+            _addEntryToBatch(batch, habitId, date);
+          }
+          break;
+
+        case 'weekly':
+          if (selectedWeekDay == null) throw ArgumentError('Weekly frequency requires a day selection');
+          final daysUntilWeekDay = (selectedWeekDay - now.weekday + 7) % 7;
+          final nextWeekDay = now.add(Duration(days: daysUntilWeekDay));
+          
+          for (int i = 0; i < numberOfDays; i++) {
+            final date = nextWeekDay.add(Duration(days: 7 * i));
+            _addEntryToBatch(batch, habitId, date);
+          }
+          break;
+
+        case 'weekdays':
+          for (int i = 0; i < numberOfDays; i++) {
+            final date = now.add(Duration(days: i));
+            // Only add entries for Monday (1) through Friday (5)
+            if (date.weekday >= 1 && date.weekday <= 5) {
+              _addEntryToBatch(batch, habitId, date);
+            }
+          }
+          break;
+
+        case 'monthly':
+          if (selectedMonthDay == null) throw ArgumentError('Monthly frequency requires a day selection');
+          for (int i = 0; i < numberOfDays; i++) {
+            final date = DateTime(now.year, now.month + i, selectedMonthDay);
+            _addEntryToBatch(batch, habitId, date);
+          }
+          break;
+
+        default:
+          throw ArgumentError('Invalid frequency: $frequency');
+      }
+
       await batch.commit();
     } catch (e) {
-      // ignore: avoid_print
-      print('Error committing batch: $e');
-      // If batch write fails, attempt to delete the main habit document to maintain consistency
-      try {
-        await habitsRef.delete();
-      } catch (deleteError) {
-        // ignore: avoid_print
-        print('Error deleting habit after failed batch commit: $deleteError');
-      }
+      await _habits.doc(habitId).delete();  // Cleanup if entries creation fails
+      throw Exception('Failed to create habit entries: $e');
     }
+  }
+
+  void _addEntryToBatch(WriteBatch batch, String habitId, DateTime date) {
+    final entryRef = _entriesCollection(habitId).doc();
+    batch.set(entryRef, {
+      'habitId': habitId,
+      'date': date,
+      'isCompleted': false,
+      'streak': 0,
+    });
   }
 
   /// Retrieves a stream of habits for a specific date.
@@ -94,47 +147,56 @@ class FirebaseService {
   /// @param date The date for which to retrieve habits
   /// @return A stream of List<Habit> for the specified date
   Stream<List<Habit>> getHabitsForDate(DateTime date) {
-    if (currentUserId == null) return Stream.value([]);
-
+    print('getHabitsForDate called with date: ${date.toString()}');
+    
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = startOfDay.add(Duration(days: 1));
+    
+    print('Querying for dates between: ${startOfDay} and ${endOfDay}');
+    
     return _habits
         .where('userId', isEqualTo: currentUserId)
         .snapshots()
         .asyncMap((habitSnapshot) async {
-      List<Habit> habits = [];
-      List errors = [];
+          List<Habit> habits = [];
 
-      // Process each habit document from the snapshot
-      for (var doc in habitSnapshot.docs) {
-        try {
-          final habit = Habit.fromDocument(doc);
-          // Retrieve entries for this habit on the specified date
-          final entryRef = await _entriesCollection(habit.id!)
-              .where('date',
-                  isEqualTo: Timestamp.fromDate(
-                      DateTime(date.year, date.month, date.day)))
-              .get();
-          final entries =
-              entryRef.docs.map((e) => HabitEntry.fromDocument(e)).toList();
+          for (var doc in habitSnapshot.docs) {
+            try {
+              final habit = Habit.fromDocument(doc);
+              
+              // Query entries between start and end of day
+              final entryRef = await _entriesCollection(habit.id!)
+                  .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+                  .where('date', isLessThan: Timestamp.fromDate(endOfDay))
+                  .get();
+                  
+              print('Found ${entryRef.docs.length} entries for ${habit.name} on ${startOfDay}');
+              
+              if (entryRef.docs.isNotEmpty) {
+                // Create a map of entries
+                Map<String, HabitEntry> entries = {};
+                for (var entryDoc in entryRef.docs) {
+                  final entry = HabitEntry.fromDocument(entryDoc);
+                  final dateKey = DateTime(
+                    entry.date.year,
+                    entry.date.month,
+                    entry.date.day
+                  ).toString();
+                  entries[dateKey] = entry;
+                  print('Added entry for ${habit.name} on $dateKey with completion status: ${entry.isCompleted}');
+                }
 
-          // Include the habit if it has entries for this date or if it's a daily habit
-          if (entries.isNotEmpty || habit.frequency == 'daily') {
-            habits.add(habit);
+                // Create new habit instance with entries
+                habits.add(habit.copyWithEntries(entries));
+                print('Added habit: ${habit.name} with ${entries.length} entries');
+              }
+            } catch (e) {
+              print('Error processing habit: $e');
+            }
           }
-        } catch (e) {
-          errors.add(e);
-        }
-        // If any errors occurred during processing, throw an exception
-        if (errors.isNotEmpty) {
-          print(errors);
-          throw Exception(errors.join('\n'));
-        }
-      }
-      return habits;
-    }).handleError((error) {
-      // ignore: avoid_print
-      print('Error fetching habits: $error');
-      return [];
-    });
+          
+          return habits;
+        });
   }
 
   /// Updates the completion status of a habit for a specific date.
@@ -144,53 +206,41 @@ class FirebaseService {
   /// @param isCompleted Whether the habit was completed on this date
   Future<void> updateHabitCompletion(
       String habitId, DateTime date, bool isCompleted) async {
-    // Retrieve the entry document for the specified date
-    final entryQuery = await _entriesCollection(habitId)
-        .where('date',
-            isEqualTo:
-                Timestamp.fromDate(DateTime(date.year, date.month, date.day)))
-        .get();
-    if (entryQuery.docs.isEmpty) return;
-
-    final entryDoc = entryQuery.docs.first;
-    final entry = HabitEntry.fromDocument(entryDoc);
-
-    // If the completion status hasn't changed, no update is needed
-    if (entry.isCompleted == isCompleted) return;
-
-    int newStreak;
-    if (isCompleted) {
-      // If marking as completed, check the previous day's entry to update streak
-      final previousDate = date.subtract(Duration(days: 1));
-      final previousEntry = await _entriesCollection(habitId)
-          .where('date',
-              isEqualTo: Timestamp.fromDate(DateTime(
-                  previousDate.year, previousDate.month, previousDate.day)))
-          .get();
-      final previousEntryData =
-          previousEntry.docs.first.data() as Map<String, dynamic>;
-      if (previousEntry.docs.isNotEmpty &&
-          previousEntryData['isCompleted'] == true) {
-        newStreak = previousEntryData['streak'] + 1;
-      } else {
-        newStreak = 1;
-      }
-    } else {
-      // If marking as not completed, reset the streak
-      newStreak = 0;
-    }
-
-    // Update the entry in Firestore using a batch write
-    final batch = _firestore.batch();
-    batch.update(
-        entryDoc.reference, {'isCompleted': isCompleted, 'streak': newStreak});
     try {
-      await batch.commit();
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = startOfDay.add(Duration(days: 1));
+
+      print('FirebaseService: Updating habit $habitId for date $startOfDay to $isCompleted');
+
+      final entryQuery = await _entriesCollection(habitId)
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where('date', isLessThan: Timestamp.fromDate(endOfDay))
+          .get();
+
+      if (entryQuery.docs.isEmpty) {
+        print('FirebaseService: No entry found for date $startOfDay');
+        return;
+      }
+
+      final entryDoc = entryQuery.docs.first;
+      print('FirebaseService: Found entry ${entryDoc.id}');
+
+      await entryDoc.reference.update({
+        'isCompleted': isCompleted,
+      });
+      if (isCompleted) {
+        final streak = await getHabitStreak(habitId);
+        await _habits.doc(habitId).update({
+          'currentStreak': streak
+        });
+      }
+      
+      print('FirebaseService: Successfully updated entry');
     } catch (e) {
-      // ignore: avoid_print
-      print('Error updating habit completion: $e');
+      print('FirebaseService: Error updating habit completion: $e');
+      throw Exception('Failed to update habit completion: $e');
     }
-  }
+  } 
 
   /// Calculates the current streak for a given habit.
   /// A streak is defined as the number of consecutive days a habit has been completed.
@@ -216,7 +266,7 @@ class FirebaseService {
           break;
         }
       }
-      return streak;
+      return streak; 
     } catch (e) {
       // ignore: avoid_print
       print('Error fetching habit streak: $e');
@@ -321,3 +371,4 @@ class FirebaseService {
     }
   }
 }
+

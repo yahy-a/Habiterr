@@ -2,8 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:habiter_/firebase%20services/firebase_auth.dart';
-import 'package:habiter_/screens/home.dart';
-import 'package:habiter_/screens/signup.dart';
+import 'package:habiter_/screens/structure.dart';
+import 'package:habiter_/screens/signIn/signup.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

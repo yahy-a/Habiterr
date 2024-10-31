@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:habiter_/screens/home.dart';
-import 'package:habiter_/screens/login.dart';
+import 'package:habiter_/screens/structure.dart';
+import 'package:habiter_/screens/signIn/login.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});

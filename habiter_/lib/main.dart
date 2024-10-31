@@ -1,15 +1,17 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:habiter_/providers/habit_provider.dart';
-import 'package:habiter_/screens/splash.dart';
+import 'package:habiter_/screens/start/splash.dart';
 import 'package:provider/provider.dart';
 
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => HabitProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => HabitProvider()),
+      ],
       child: const MyApp(), 
     )
   );
@@ -23,7 +25,7 @@ class MyApp extends StatelessWidget {
       title: 'Habiter',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(),
-      home: const SplashScreen(),  
+      home: const SplashScreen(),
     );
   }
 } 
