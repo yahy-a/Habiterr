@@ -427,6 +427,7 @@ class _HomeContState extends State<HomeCont> {
                   end: Alignment.centerRight,
                   colors: [
                     Color.fromARGB(255, 187, 134, 252).withOpacity(0.3),
+                    Color.fromARGB(255, 187, 134, 252).withOpacity(0.15),
                     Colors.transparent,
                   ],
                 ),
@@ -534,38 +535,43 @@ class _HomeContState extends State<HomeCont> {
       bool isToday = habitProvider.selectedDate.day == DateTime.now().day &&
           habitProvider.selectedDate.month == DateTime.now().month &&
           habitProvider.selectedDate.year == DateTime.now().year;
-      bool isCompleted = habit.isCompletedForDate(habitProvider.selectedDate);
+      bool isCompleted;
+      if(isToday){
+        isCompleted = habitProvider.isHabitCompleted(habit.id!, habitProvider.selectedDate);
+      }else{
+        isCompleted = habit.isCompletedForDate(habitProvider.selectedDate);
+      }
       return Container(
-        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6), // Reduced vertical margin
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: isCompleted
                 ? [
-                    Color(0xFF2E7D32),
-                    Color(0xFF1B5E20),
+                    Color(0xFF9C27B0), // Purple 500
+                    Color(0xFF7B1FA2), // Purple 700
                   ]
                 : [
                     Color(0xFF2A2A2A),
                     Color(0xFF1F1F1F),
                   ],
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10), // Slightly reduced border radius
           boxShadow: [
             BoxShadow(
               color: Colors.black26,
-              blurRadius: 8,
+              blurRadius: 6, // Reduced blur
               offset: Offset(0, 2),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10), // Match container border radius
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: const EdgeInsets.fromLTRB(12.0, 8.0, 8.0, 0), // Reduced padding
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -573,7 +579,7 @@ class _HomeContState extends State<HomeCont> {
                       habit.name,
                       style: GoogleFonts.poppins(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 18, // Slightly reduced font size
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0.5,
                       ),
@@ -583,58 +589,46 @@ class _HomeContState extends State<HomeCont> {
                         if (isToday)
                           GestureDetector(
                             onTap: () async {
-                              setState(() {
-                                isCompleted = true;
-                              });
                               try {
-                                final isCurrentlyCompleted =
-                                    habit.isCompletedForDate(
-                                        habitProvider.selectedDate);
-                                final newCompletionStatus =
-                                    !isCurrentlyCompleted;
                                 await habitProvider.updateHabitCompletion(
-                                    habit.id!, newCompletionStatus);
+                                    habit.id!, !isCompleted);
+                                isCompleted = !isCompleted;
                               } catch (e) {
                                 print('Error updating habit completion: $e');
                               }
                             },
                             child: AnimatedContainer(
-                              duration: Duration(
-                                  milliseconds:
-                                      100), // Reduced from 200ms to 100ms
+                              duration: Duration(milliseconds: 0),
                               curve: Curves.easeInOut,
-                              width: 28,
-                              height: 28,
+                              width: 24, // Reduced size
+                              height: 24, // Reduced size
                               margin: EdgeInsets.only(right: 8),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(6),
                                 border: Border.all(
                                   color: isCompleted
-                                      ? Colors.green[300]!.withOpacity(0.6)
+                                      ? Color(0xFFCE93D8).withOpacity(0.6) // Purple 200
                                       : Colors.white30,
                                   width: 1.5,
                                 ),
                                 color: isCompleted
-                                    ? Colors.green[400]
+                                    ? Color(0xFF9C27B0) // Purple 500
                                     : Colors.transparent,
                                 boxShadow: [
                                   if (isCompleted)
                                     BoxShadow(
-                                      color:
-                                          Colors.green[400]!.withOpacity(0.3),
+                                      color: Color(0xFF9C27B0).withOpacity(0.3),
                                       spreadRadius: 1,
                                     )
                                 ],
                               ),
                               child: Center(
                                 child: AnimatedSwitcher(
-                                  duration: Duration(
-                                      milliseconds:
-                                          100), // Reduced from 200ms to 100ms
+                                  duration: Duration(milliseconds: 100),
                                   child: isCompleted
                                       ? Icon(Icons.check,
                                           key: ValueKey(true),
-                                          size: 16,
+                                          size: 14, // Reduced icon size
                                           color: Colors.white)
                                       : SizedBox(key: ValueKey(false)),
                                 ),
@@ -645,7 +639,7 @@ class _HomeContState extends State<HomeCont> {
                           icon: Icon(
                             Icons.more_horiz,
                             color: Colors.white60,
-                            size: 20,
+                            size: 18, // Reduced icon size
                           ),
                           padding: EdgeInsets.zero,
                           constraints: BoxConstraints(),
@@ -658,7 +652,7 @@ class _HomeContState extends State<HomeCont> {
               ),
               Container(
                 height: 1,
-                margin: EdgeInsets.symmetric(horizontal: 12),
+                margin: EdgeInsets.symmetric(horizontal: 10), // Reduced margin
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -670,7 +664,7 @@ class _HomeContState extends State<HomeCont> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: const EdgeInsets.all(10.0), // Reduced padding
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -679,7 +673,7 @@ class _HomeContState extends State<HomeCont> {
                         habit.detail,
                         style: GoogleFonts.poppins(
                           color: Colors.white70,
-                          fontSize: 13,
+                          fontSize: 14, // Reduced font size
                           height: 1.3,
                         ),
                         maxLines: 2,
@@ -688,10 +682,10 @@ class _HomeContState extends State<HomeCont> {
                     ),
                     Container(
                       padding:
-                          EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          EdgeInsets.symmetric(horizontal: 8, vertical: 3), // Reduced padding
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -699,14 +693,14 @@ class _HomeContState extends State<HomeCont> {
                           Icon(
                             Icons.local_fire_department,
                             color: Colors.orange.shade400,
-                            size: 14,
+                            size: 12, // Reduced icon size
                           ),
                           SizedBox(width: 4),
                           Text(
                             '${habit.currentStreak}',
                             style: GoogleFonts.poppins(
                               color: Colors.white,
-                              fontSize: 13,
+                              fontSize: 12, // Reduced font size
                               fontWeight: FontWeight.w500,
                             ),
                           ),

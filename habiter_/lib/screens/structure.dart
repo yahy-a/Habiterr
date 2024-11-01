@@ -51,79 +51,169 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBottomNavBar() {
-    return BottomAppBar(
-      color: Color(0xFF2A2A2A),
-      height: 60, // Explicitly set a reduced height for the BottomAppBar
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildNavBarItem(Icons.home, 0),
-          _buildNavBarItem(Icons.settings, 1),
-          if (_selectedIndex == 0) SizedBox(width: 25),
-          _buildNavBarItem(Icons.bar_chart, 3),
-          _buildNavBarItem(Icons.person, 4),
+    return Container(
+      decoration: BoxDecoration(
+        color: Color(0xFF2A2A2A),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: Offset(0, -5),
+          ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        child: BottomAppBar(
+          color: Colors.transparent,
+          elevation: 0,
+          height: 65,
+          padding: EdgeInsets.zero,
+          notchMargin: 8,
+          shape: AutomaticNotchedShape(
+            RoundedRectangleBorder(),
+            CircleBorder(),
+          ),
+          child: Container(
+            margin: EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildNavBarItem(Icons.home_rounded, 0),
+                      SizedBox(width: 15),
+                      _buildNavBarItem(Icons.settings_rounded, 1),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 40), // Consistent space for FAB
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildNavBarItem(Icons.bar_chart_rounded, 3),
+                      SizedBox(width: 15),
+                      _buildNavBarItem(Icons.person_rounded, 4),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
-  //   Widget _buildBottomNavBar() {
-  //   return BottomAppBar(
-  //     color: Color(0xFF2A2A2A),
-  //     child: Container(
-  //       height: 50,
-  //       child: Row(
-  //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //         children: [
-  //           _buildNavBarItem('assets/icons/home.svg', 0),
-  //           _buildNavBarItem('assets/icons/settings.svg', 1),
-  //           if (_selectedIndex == 0) SizedBox(width: 28),
-  //           _buildNavBarItem('assets/icons/analytics.svg', 2),
-  //           _buildNavBarItem('assets/icons/streak.svg', 3),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
 
   Widget _buildNavBarItem(IconData icon, int index) {
-    return IconButton(
-      icon: Icon(icon, size: 30),
-      color: _selectedIndex == index ? Colors.purple : Colors.grey[400],
-      onPressed: () => _onItemTapped(index),
+    final isSelected = _selectedIndex == index;
+    return Container(
+      margin: EdgeInsets.fromLTRB(4, 0, 4, 0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: isSelected ? LinearGradient(
+          colors: [
+            Color(0xFF9C27B0).withOpacity(0.8),
+            Color(0xFF7B1FA2).withOpacity(0.9),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ) : null,
+        boxShadow: isSelected ? [
+          BoxShadow(
+            color: Color(0xFF9C27B0).withOpacity(0.3),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          )
+        ] : null,
+      ),
+      child: IconButton(
+        icon: Icon(
+          icon,
+          size: 26,
+        ),
+        color: isSelected 
+          ? Colors.white
+          : Colors.grey[400],
+        onPressed: () => _onItemTapped(index),
+        splashColor: Colors.purple.withOpacity(0.3),
+        highlightColor: Colors.purple.withOpacity(0.2),
+      ),
     );
   }
-
-  //   Widget _buildNavBarItem(String assetName, int index) {
-  //   final isSelected = _selectedIndex == index;
-  //   return IconButton(
-  //     icon: SvgPicture.asset(
-  //       assetName,
-  //       width: 23,
-  //       height: 23,
-  //       colorFilter: ColorFilter.mode(
-  //         _selectedIndex == 0 
-  //             ? Colors.grey[400]!
-  //             : (isSelected ? Colors.purple : Colors.grey[100]!),
-  //         BlendMode.srcIn,
-  //       ),
-  //     ),
-  //     onPressed: () => _onItemTapped(index),
-  //   );
-  // }
 
   Widget _buildFloatingActionButton() {
-    return FloatingActionButton(
-      backgroundColor: Colors.purple,
-      elevation: 4,
-      shape: CircleBorder(),
-      onPressed: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => AddHabitPage()));
-      },
-      child: Icon(Icons.add, size: 32,color: Colors.white,),
+    return Stack(
+      children: [
+        // FAB Socket/Background
+        Container(
+          width: 68,
+          height: 68,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.black.withOpacity(0.2),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.1),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 8,
+                spreadRadius: 1,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+        ),
+        // FAB
+        Positioned.fill(
+          child: Center(
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF9C27B0),
+                    Color(0xFF7B1FA2),
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0xFF9C27B0).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  customBorder: CircleBorder(),
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => AddHabitPage()));
+                  },
+                  child: Icon(
+                    Icons.add,
+                    size: 28,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
-
-
 
   void _onItemTapped(int index) {
     setState(() {

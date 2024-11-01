@@ -66,6 +66,22 @@ class HabitProvider with ChangeNotifier {
   // Getter for selected date
   DateTime get selectedDate => _selectedDate;
 
+  final Map<String, bool> _completionCache = {};
+  
+  // Add this method to initialize cache from Firestore data
+  void _initializeCache(List<Habit> habits) {
+    _completionCache.clear();
+    for (var habit in habits) {
+    final dateKey = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day
+    ).toString();
+      final cacheKey = '${habit.id}_$dateKey';
+      _completionCache[cacheKey] = habit.isCompletedForDate(_selectedDate);
+    }
+  }
+
   // Setter for progress
   void setProgress(int progress, int total) {
     if (_progress != progress || _total != total) {
@@ -120,7 +136,16 @@ class HabitProvider with ChangeNotifier {
   }
   
   /// Provides a stream of habits for the selected date
-  Stream<List<Habit>> get habitsStream => _firebaseService.getHabitsForDate(_selectedDate);
+  Stream<List<Habit>> get habitsStream {
+    return _firebaseService.getHabitsForDate(_selectedDate)
+      .map((habits) {
+        _habits.clear(); // Clear existing habits first
+        _habits.addAll(habits);
+        // Initialize cache for each habit
+        _initializeCache(habits);
+        return habits;
+      });
+  }
 
   /// Adds a new habit to Firebase
   /// @param name The name of the habit
@@ -153,15 +178,52 @@ class HabitProvider with ChangeNotifier {
   /// @param isCompleted The new completion status
   Future<void> updateHabitCompletion(String habitId, bool isCompleted) async {
     try {
-      print('HabitProvider: Updating habit $habitId to $isCompleted');
-      print('Selected date: $_selectedDate');
+      final dateKey = DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day
+      ).toString();
+      final cacheKey = '${habitId}_$dateKey';
       
-      await _firebaseService.updateHabitCompletion(habitId, _selectedDate, isCompleted);
+      // Get previous state
+      final wasCompleted = _completionCache[cacheKey] ?? false;
       
-      // Force a refresh of the habits stream
-      notifyListeners();
+      // Only update if state actually changes
+      if (wasCompleted != isCompleted) {
+        // Update local cache immediately
+        _completionCache[cacheKey] = isCompleted;
+        
+        // Update local progress
+        setProgress(_progress, _total);
+        // Notify listeners immediately for UI update
+        notifyListeners();
+
+        // Then update Firebase in background
+        await _firebaseService.updateHabitCompletion(
+          habitId, 
+          _selectedDate, 
+          isCompleted
+        );
+      }
     } catch (e) {
-      print('HabitProvider: Error updating habit completion: $e');
+      // Revert local changes if Firebase update fails
+      final dateKey = DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day
+      ).toString();
+      final cacheKey = '${habitId}_$dateKey';
+      
+      _completionCache[cacheKey] = !isCompleted;
+      if (isCompleted) {
+        _progress--;
+      } else {
+        _progress++;
+      }
+      _progressValue = _total > 0 ? _progress / _total : 0.0;
+      notifyListeners();
+      
+      print('Error updating habit completion: $e');
       rethrow;
     }
   }
@@ -189,6 +251,34 @@ class HabitProvider with ChangeNotifier {
 
   Future<int> getHabitStreak(String habitId) async {
     return await _firebaseService.getHabitStreak(habitId);
+  }
+
+  bool isHabitCompleted(String habitId, DateTime date) {
+    final dateKey = DateTime(date.year, date.month, date.day).toString();
+    final cacheKey = '${habitId}_$dateKey';
+    
+    // Check cache first
+    if (_completionCache.containsKey(cacheKey)) {
+      return _completionCache[cacheKey]!;
+    }
+
+    // If not in cache, find the habit
+    final habit = _habits.firstWhere((h) => h.id == habitId);
+    
+    // Search through entries to find matching date
+    final isCompleted = habit.entries.values.any((entry) {
+      final entryDate = DateTime(
+        entry.date.year,
+        entry.date.month,
+        entry.date.day
+      ).toString();
+      return entryDate == dateKey && entry.isCompleted;
+    });
+
+    // Store in cache
+    _completionCache[cacheKey] = isCompleted;
+    
+    return isCompleted;
   }
 
   @override
