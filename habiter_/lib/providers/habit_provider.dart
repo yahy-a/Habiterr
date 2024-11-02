@@ -19,6 +19,13 @@ class HabitProvider with ChangeNotifier {
   // List to store habit objects
   final List<Habit> _habits = [];
 
+  bool _isFilled = false;
+  bool get isFilled => _isFilled;
+  void setIsFilled(bool value) {
+    _isFilled = value;
+    notifyListeners();
+  }
+
   // Variables to store the progress
   int _total = 0;
 
@@ -194,7 +201,7 @@ class HabitProvider with ChangeNotifier {
         _completionCache[cacheKey] = isCompleted;
         
         // Update local progress
-        setProgress(_progress, _total);
+        setProgress(_progress, _total); // Update progress immediately
         // Notify listeners immediately for UI update
         notifyListeners();
 
@@ -204,6 +211,11 @@ class HabitProvider with ChangeNotifier {
           _selectedDate, 
           isCompleted
         );
+        await _firebaseService.updateHabitStreak(habitId);
+        notifyListeners();
+        await _firebaseService.updateOverAllStreak();
+        await _firebaseService.updateOverallBestStreak();
+        notifyListeners();
       }
     } catch (e) {
       // Revert local changes if Firebase update fails
@@ -249,8 +261,24 @@ class HabitProvider with ChangeNotifier {
     return await _firebaseService.getHabitBestStreak(habitId);
   }
 
+
   Future<int> getHabitStreak(String habitId) async {
     return await _firebaseService.getHabitStreak(habitId);
+  }
+
+  Future<void> updateHabitStreak(String habitId) async {
+    await _firebaseService.updateHabitStreak(habitId);
+    notifyListeners();
+  }
+
+  Future<void> updateOverAllStreak() async {
+    await _firebaseService.updateOverAllStreak();
+    notifyListeners();
+  } 
+
+  Future<void> updateOverallBestStreak() async {
+    await _firebaseService.updateOverallBestStreak();
+    notifyListeners();
   }
 
   bool isHabitCompleted(String habitId, DateTime date) {
@@ -279,6 +307,11 @@ class HabitProvider with ChangeNotifier {
     _completionCache[cacheKey] = isCompleted;
     
     return isCompleted;
+  }
+
+  Future<void> updateHabit(String habitId, String name, String detail) async {
+    await _firebaseService.updateHabit(habitId, name, detail);
+    notifyListeners();
   }
 
   @override

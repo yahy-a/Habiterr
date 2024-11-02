@@ -175,6 +175,8 @@ class _AddHabitPageState extends State<AddHabitPage> {
         ),
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       validator: validator,
     );
   }

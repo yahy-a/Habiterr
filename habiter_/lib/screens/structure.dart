@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_svg/svg.dart';
 import 'package:habiter_/screens/analytics.dart';
 import 'package:habiter_/screens/home/add.dart';
@@ -84,20 +86,35 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildNavBarItem(Icons.home_rounded, 0),
+                      AnimatedSwitcher(
+                        duration: Duration(milliseconds: 200),
+                        child: _buildNavBarItem(Icons.home_rounded, 0),
+                      ),
                       SizedBox(width: 15),
-                      _buildNavBarItem(Icons.settings_rounded, 1),
+                      AnimatedSwitcher(
+                        duration: Duration(milliseconds: 200),
+                        child: _buildNavBarItem(Icons.settings_rounded, 1),
+                      ),
                     ],
                   ),
                 ),
-                SizedBox(width: 40), // Consistent space for FAB
+                AnimatedContainer(
+                  duration: Duration(milliseconds: 200),
+                  width: _selectedIndex == 0 ? 40 : 10,
+                ), // Smooth FAB space transition
                 Expanded(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildNavBarItem(Icons.bar_chart_rounded, 3),
+                      AnimatedSwitcher(
+                        duration: Duration(milliseconds: 200),
+                        child: _buildNavBarItem(Icons.bar_chart_rounded, 3),
+                      ),
                       SizedBox(width: 15),
-                      _buildNavBarItem(Icons.person_rounded, 4),
+                      AnimatedSwitcher(
+                        duration: Duration(milliseconds: 200),
+                        child: _buildNavBarItem(Icons.person_rounded, 4),
+                      ),
                     ],
                   ),
                 ),
@@ -111,38 +128,60 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildNavBarItem(IconData icon, int index) {
     final isSelected = _selectedIndex == index;
-    return Container(
-      margin: EdgeInsets.fromLTRB(4, 0, 4, 0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: isSelected ? LinearGradient(
-          colors: [
-            Color(0xFF9C27B0).withOpacity(0.8),
-            Color(0xFF7B1FA2).withOpacity(0.9),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ) : null,
-        boxShadow: isSelected ? [
-          BoxShadow(
-            color: Color(0xFF9C27B0).withOpacity(0.3),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          )
-        ] : null,
-      ),
-      child: IconButton(
-        icon: Icon(
-          icon,
-          size: 26,
-        ),
-        color: isSelected 
-          ? Colors.white
-          : Colors.grey[400],
-        onPressed: () => _onItemTapped(index),
-        splashColor: Colors.purple.withOpacity(0.3),
-        highlightColor: Colors.purple.withOpacity(0.2),
-      ),
+    return TweenAnimationBuilder(
+      duration: Duration(milliseconds: 500),
+      tween: Tween<double>(begin: 0, end: isSelected ? 1.0 : 0.0),
+      builder: (context, double value, child) {
+        return Transform.translate(
+          offset: Offset(0, sin(value * pi * 2) * 4),
+          child: Container(
+            margin: EdgeInsets.fromLTRB(4, 0, 4, 0),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(
+                colors: [
+                  isSelected 
+                    ? Color(0xFF9C27B0).withOpacity(0.8 * value)
+                    : Colors.transparent,
+                  isSelected
+                    ? Color(0xFF7B1FA2).withOpacity(0.9 * value) 
+                    : Colors.transparent,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                if (isSelected)
+                  BoxShadow(
+                    color: Color(0xFF9C27B0).withOpacity(0.3 * value),
+                    blurRadius: 8 * value,
+                    offset: Offset(0, 2 * value),
+                  )
+              ],
+            ),
+            child: Transform.rotate(
+              angle: isSelected ? sin(value * pi * 2) * 0.1 : 0,
+              child: Transform.scale(
+                scale: 1.0 + (isSelected ? sin(value * pi) * 0.2 : 0),
+                child: IconButton(
+                  icon: Icon(
+                    icon,
+                    size: 26,
+                  ),
+                  color: Color.lerp(
+                    Colors.grey[400],
+                    Colors.white,
+                    isSelected ? value : 0
+                  ),
+                  onPressed: () => _onItemTapped(index),
+                  splashColor: Colors.purple.withOpacity(0.3),
+                  highlightColor: Colors.purple.withOpacity(0.2),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

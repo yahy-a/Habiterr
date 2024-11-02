@@ -48,26 +48,87 @@ class _HomeContState extends State<HomeCont> {
   }
 
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Hello, Sampad',
-                  style: TextStyle(color: Colors.white, fontSize: 16)),
-              Text('Good Evening',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold)),
+    return Consumer<HabitProvider>(
+      builder: (context, habitProvider, child) {
+        String formattedDate = DateFormat('dd-MM-yyyy').format(habitProvider.selectedDate);
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF2A2A2A),
+                Color(0xFF1F1F1F),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
             ],
           ),
-          Icon(Icons.notifications, color: Colors.purple, size: 30),
-        ],
-      ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AnimatedSwitcher(
+                    duration: Duration(milliseconds: 300),
+                    transitionBuilder: (Widget child, Animation<double> animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: Offset(0.0, 0.5),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Text(
+                      formattedDate,
+                      key: ValueKey<String>(formattedDate),
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              StatefulBuilder(
+                builder: (context, setState) {
+                  return GestureDetector(
+                    onTap: () {
+                      habitProvider.setIsFilled(!habitProvider.isFilled);
+                    },
+                    child: Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Color.fromARGB(255, 187, 134, 252).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        habitProvider.isFilled ? Icons.notifications : Icons.notifications_outlined,
+                        color: Color.fromARGB(255, 187, 134, 252),
+                        size: 28,
+                      ),
+                    ),
+                  );
+                }
+              ),
+            ],
+          ),
+        );
+      }
     );
   }
 
@@ -163,7 +224,6 @@ class _HomeContState extends State<HomeCont> {
           ]).then((values) => {'streak': values[0], 'bestStreak': values[1]}),
           builder: (context, snapshot) {
             final streakData = snapshot.data ?? {'streak': 0, 'bestStreak': 0};
-
             return Container(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
@@ -203,7 +263,7 @@ class _HomeContState extends State<HomeCont> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Current Streak',
+                            'Current overall Streak',
                             style: GoogleFonts.poppins(
                               color: Colors.white70,
                               fontSize: 12,
@@ -454,6 +514,7 @@ class _HomeContState extends State<HomeCont> {
                   print('StreamBuilder error: ${snapshot.error}');
                   return Center(child: Text('Error: ${snapshot.error}'));
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  habitProvider.setProgress(0, 0);
                   return Container(
                     margin: EdgeInsets.all(20),
                     padding: EdgeInsets.symmetric(vertical: 30, horizontal: 20),
@@ -515,6 +576,7 @@ class _HomeContState extends State<HomeCont> {
                 });
                 // Disable scrolling in ListView.builder by using NeverScrollableScrollPhysics
                 return ListView.builder(
+                  key: ValueKey(habits.length),
                   physics: NeverScrollableScrollPhysics(),
                   shrinkWrap: true,
                   itemCount: habits.length,
@@ -541,176 +603,462 @@ class _HomeContState extends State<HomeCont> {
       }else{
         isCompleted = habit.isCompletedForDate(habitProvider.selectedDate);
       }
-      return Container(
-        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6), // Reduced vertical margin
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isCompleted
-                ? [
-                    Color(0xFF9C27B0), // Purple 500
-                    Color(0xFF7B1FA2), // Purple 700
-                  ]
-                : [
-                    Color(0xFF2A2A2A),
-                    Color(0xFF1F1F1F),
-                  ],
-          ),
-          borderRadius: BorderRadius.circular(10), // Slightly reduced border radius
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 6, // Reduced blur
-              offset: Offset(0, 2),
+      return Dismissible(
+        key: Key(habit.id!),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: EdgeInsets.only(right: 20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                Colors.red.withOpacity(0.1),
+                Colors.red.shade900,
+              ],
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10), // Match container border radius
-          child: Column(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12.0, 8.0, 8.0, 0), // Reduced padding
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      habit.name,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 18, // Slightly reduced font size
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        if (isToday)
-                          GestureDetector(
-                            onTap: () async {
-                              try {
-                                await habitProvider.updateHabitCompletion(
-                                    habit.id!, !isCompleted);
-                                isCompleted = !isCompleted;
-                              } catch (e) {
-                                print('Error updating habit completion: $e');
-                              }
-                            },
-                            child: AnimatedContainer(
-                              duration: Duration(milliseconds: 0),
-                              curve: Curves.easeInOut,
-                              width: 24, // Reduced size
-                              height: 24, // Reduced size
-                              margin: EdgeInsets.only(right: 8),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: isCompleted
-                                      ? Color(0xFFCE93D8).withOpacity(0.6) // Purple 200
-                                      : Colors.white30,
-                                  width: 1.5,
-                                ),
-                                color: isCompleted
-                                    ? Color(0xFF9C27B0) // Purple 500
-                                    : Colors.transparent,
-                                boxShadow: [
-                                  if (isCompleted)
-                                    BoxShadow(
-                                      color: Color(0xFF9C27B0).withOpacity(0.3),
-                                      spreadRadius: 1,
-                                    )
-                                ],
-                              ),
-                              child: Center(
-                                child: AnimatedSwitcher(
-                                  duration: Duration(milliseconds: 100),
-                                  child: isCompleted
-                                      ? Icon(Icons.check,
-                                          key: ValueKey(true),
-                                          size: 14, // Reduced icon size
-                                          color: Colors.white)
-                                      : SizedBox(key: ValueKey(false)),
-                                ),
-                              ),
-                            ),
-                          ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.more_horiz,
-                            color: Colors.white60,
-                            size: 18, // Reduced icon size
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: BoxConstraints(),
-                          onPressed: () {},
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              Icon(
+                Icons.delete_outline,
+                color: Colors.white,
+                size: 28,
               ),
-              Container(
-                height: 1,
-                margin: EdgeInsets.symmetric(horizontal: 10), // Reduced margin
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      Colors.white24,
-                      Colors.transparent
-                    ],
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(10.0), // Reduced padding
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        habit.detail,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white70,
-                          fontSize: 14, // Reduced font size
-                          height: 1.3,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 8, vertical: 3), // Reduced padding
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.local_fire_department,
-                            color: Colors.orange.shade400,
-                            size: 12, // Reduced icon size
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            '${habit.currentStreak}',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 12, // Reduced font size
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+              SizedBox(width: 8),
+              Text(
+                'Delete',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
+          ),
+        ),
+        confirmDismiss: (direction) async {
+          return await showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                backgroundColor: Color(0xFF2A2A2A),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(
+                    color: Colors.red.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                title: Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.red,
+                      size: 28,
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      'Delete Habit',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                content: Text(
+                  'Are you sure you want to delete this habit? This action cannot be undone.',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white70,
+                    fontSize: 16,
+                    height: 1.5,
+                  ),
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white70,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    onPressed: () => Navigator.of(context).pop(false),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade900,
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Delete',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    onPressed: () => Navigator.of(context).pop(true),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+        onDismissed: (direction) async {
+          try {
+            await habitProvider.deleteHabit(habit.id!);
+            await Future.delayed(Duration(milliseconds: 300));
+          } catch (e) {
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  backgroundColor: Color(0xFF2A2A2A),
+                  title: Text(
+                    'Error',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  content: Text(
+                    'Error deleting habit',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white70,
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      child: Text(
+                        'OK',
+                        style: GoogleFonts.poppins(
+                          color: Colors.purple,
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                );
+              },
+            );
+          }
+        },
+        child: Container(
+          margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6), // Reduced vertical margin
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isCompleted
+                  ? [
+                      Color(0xFF9C27B0), // Purple 500
+                      Color(0xFF7B1FA2), // Purple 700
+                    ]
+                  : [
+                      Color(0xFF2A2A2A),
+                      Color(0xFF1F1F1F),
+                    ],
+            ),
+            borderRadius: BorderRadius.circular(10), // Slightly reduced border radius
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 6, // Reduced blur
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10), // Match container border radius
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16.0, 8.0, 8.0, 0), // Reduced padding
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        habit.name,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 18, // Slightly reduced font size
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          if (isToday)
+                            GestureDetector(
+                              onTap: () async {
+                                try {
+                                  await habitProvider.updateHabitCompletion(
+                                      habit.id!, !isCompleted);
+                                  isCompleted = !isCompleted;
+                                } catch (e) {
+                                  print('Error updating habit completion: $e');
+                                }
+                              },
+                              child: AnimatedContainer(
+                                duration: Duration(milliseconds: 0),
+                                curve: Curves.easeInOut,
+                                width: 32, // Increased size
+                                height: 32, // Increased size
+                                margin: EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: isCompleted
+                                        ? Color(0xFFCE93D8).withOpacity(0.6) // Purple 200
+                                        : Colors.white30,
+                                    width: 1.5,
+                                  ),
+                                  color: isCompleted
+                                      ? Color(0xFF9C27B0) // Purple 500
+                                      : Colors.transparent,
+                                  boxShadow: [
+                                    if (isCompleted)
+                                      BoxShadow(
+                                        color: Color(0xFF9C27B0).withOpacity(0.3),
+                                        spreadRadius: 1,
+                                      )
+                                  ],
+                                ),
+                                child: Center(
+                                  child: AnimatedSwitcher(
+                                    duration: Duration(milliseconds: 100),
+                                    child: isCompleted
+                                        ? Icon(Icons.check,
+                                            key: ValueKey(true),
+                                            size: 18, // Increased icon size
+                                            color: Colors.white)
+                                        : SizedBox(key: ValueKey(false)),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          PopupMenuButton(
+                            icon: Icon(
+                              Icons.more_horiz,
+                              color: Colors.white60,
+                              size: 18,
+                            ),
+                            padding: EdgeInsets.zero,
+                            color: Color(0xFF2A2A2A),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: BorderSide.none
+                            ),
+                            itemBuilder: (context) => [
+                              PopupMenuItem(
+                                height: 36,
+                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                                onTap: () {
+                                  final nameController = TextEditingController(text: habit.name);
+                                  final detailController = TextEditingController(text: habit.detail);
+                                  
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      backgroundColor: Color(0xFF2A2A2A),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        side: BorderSide(
+                                          color: Colors.white.withOpacity(0.1),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      title: Text(
+                                        'Edit Habit',
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          TextField(
+                                            controller: nameController,
+                                            style: GoogleFonts.poppins(color: Colors.white),
+                                            decoration: InputDecoration(
+                                              labelText: 'Habit Name',
+                                              labelStyle: GoogleFonts.poppins(color: Colors.white70),
+                                              enabledBorder: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                                borderSide: BorderSide(color: Colors.white30),
+                                              ),
+                                              focusedBorder: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                                borderSide: BorderSide(color: Color(0xFF9C27B0)),
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(height: 16),
+                                          TextField(
+                                            controller: detailController,
+                                            style: GoogleFonts.poppins(color: Colors.white),
+                                            maxLines: 3,
+                                            decoration: InputDecoration(
+                                              labelText: 'Habit Detail',
+                                              labelStyle: GoogleFonts.poppins(color: Colors.white70),
+                                              enabledBorder: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                                borderSide: BorderSide(color: Colors.white30),
+                                              ),
+                                              focusedBorder: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                                borderSide: BorderSide(color: Color(0xFF9C27B0)),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(context),
+                                          child: Text(
+                                            'Cancel',
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.white70,
+                                            ),
+                                          ),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () async{
+                                            await habitProvider.updateHabit(habit.id!, nameController.text, detailController.text);
+                                            // ignore: use_build_context_synchronously
+                                            Navigator.pop(context);
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Color(0xFF9C27B0),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Save',
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.edit,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      'Edit',
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  height: 1,
+                  margin: EdgeInsets.symmetric(horizontal: 10), // Reduced margin
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        Colors.white24,
+                        Colors.transparent
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(10.0), // Reduced padding
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          habit.detail,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white70,
+                            fontSize: 14, // Reduced font size
+                            height: 1.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 8, vertical: 3), // Reduced padding
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.local_fire_department,
+                              color: Colors.orange.shade400,
+                              size: 12, // Reduced icon size
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              habit.currentStreak.toString(),
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 12, // Reduced font size
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
