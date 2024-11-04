@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:habiter_/models/habit.dart';
+import 'package:habiter_/screens/signIn/login.dart';
+import 'package:path/path.dart';
 
 /// FirebaseService handles all interactions with Firebase for habit tracking.
 /// It manages habits and their entries in Firestore, including creation,
@@ -244,12 +247,13 @@ class FirebaseService {
   /// A streak is defined as the number of consecutive days a habit has been completed.
   /// @param habitId The unique identifier of the habit
   /// @return The current streak count
-  
+
   Future<int> getHabitStreak(String habitId) async {
     final habitDoc = await _habits.doc(habitId).get();
     final habitData = habitDoc.data() as Map<String, dynamic>;
     return habitData['currentStreak'] ?? 0;
   }
+
   Future<void> updateHabitStreak(String habitId) async {
     try {
       final today = DateTime.now();
@@ -283,6 +287,7 @@ class FirebaseService {
     final overallStreakData = overallStreakDoc.data() as Map<String, dynamic>;
     return overallStreakData['overallStreak'] ?? 0;
   }
+
   Future<void> updateOverAllStreak() async {
     try {
       final now = DateTime.now();
@@ -291,8 +296,7 @@ class FirebaseService {
       final habits =
           await _habits.where('userId', isEqualTo: currentUserId).get();
 
-      if (habits.docs.isEmpty) {
-      }
+      if (habits.docs.isEmpty) {}
 
       // Start with oldest possible date as the last break point
       DateTime lastBreakDay = endOfDay;
@@ -323,37 +327,36 @@ class FirebaseService {
           }
 
           // If no incomplete entries found, use the oldest entry date
-            if (!foundIncomplete && entries.docs.isNotEmpty) {
-              final oldestEntry = entries.docs.last;
-              final oldestEntryData =
-                  oldestEntry.data() as Map<String, dynamic>;
-              final oldestDate =
-                  (oldestEntryData['date'] as Timestamp).toDate();
+          if (!foundIncomplete && entries.docs.isNotEmpty) {
+            final oldestEntry = entries.docs.last;
+            final oldestEntryData = oldestEntry.data() as Map<String, dynamic>;
+            final oldestDate = (oldestEntryData['date'] as Timestamp).toDate();
 
-              if (oldestDate.isBefore(lastBreakDay)) {
-                lastBreakDay =
-                    DateTime(oldestDate.year, oldestDate.month, oldestDate.day);
-              }
+            if (oldestDate.isBefore(lastBreakDay)) {
+              lastBreakDay =
+                  DateTime(oldestDate.year, oldestDate.month, oldestDate.day);
             }
-
+          }
         }
       }
 
       // Calculate days since last break
       final daysSinceLastBreak = endOfDay.difference(lastBreakDay).inDays;
-      await _overallStreaks.doc(currentUserId).set({'overallStreak': daysSinceLastBreak});
+      await _overallStreaks
+          .doc(currentUserId)
+          .set({'overallStreak': daysSinceLastBreak});
       // Return streak only if there are days since last break
     } catch (e) {
       print('Error calculating overall streak: $e');
     }
   }
 
-
   Future<int> getOverallBestStreak() async {
     final overallStreakDoc = await _overallBestStreaks.doc(currentUserId).get();
     final overallStreakData = overallStreakDoc.data() as Map<String, dynamic>;
     return overallStreakData['overallBestStreak'] ?? 0;
   }
+
   Future<void> updateOverallBestStreak() async {
     final currentOverallStreak = await getOverAllStreak();
     final overallStreakDoc = await _overallBestStreaks.doc(currentUserId).get();
@@ -366,12 +369,17 @@ class FirebaseService {
 
       if (currentOverallStreak > previousBestStreak) {
         bestStreak = currentOverallStreak;
-        await _overallBestStreaks.doc(currentUserId).set({'overallBestStreak': bestStreak});
+        await _overallBestStreaks
+            .doc(currentUserId)
+            .set({'overallBestStreak': bestStreak});
       }
     } else {
-      await _overallBestStreaks.doc(currentUserId).set({'overallBestStreak': bestStreak});
+      await _overallBestStreaks
+          .doc(currentUserId)
+          .set({'overallBestStreak': bestStreak});
     }
   }
+
   Future<int> getHabitBestStreak(String habitId) async {
     try {
       final habitDoc = await _habits.doc(habitId).get();
@@ -433,13 +441,47 @@ class FirebaseService {
     }
   }
 
-  Future<void> updateHabit( String habitId, String name, String detail) async {
+  Future<void> updateHabit(String habitId, String name, String detail) async {
     try {
       await _habits.doc(habitId).update({'name': name, 'detail': detail});
     } catch (e) {
       // ignore: avoid_print
       print('Error updating habit: $e');
       rethrow;
+    }
+  }
+
+  Future<void> clearAllData() async {
+    final habits =
+        await _habits.where('userId', isEqualTo: currentUserId).get();
+    final batch = _firestore.batch();
+    for (var habit in habits.docs) {
+      final entries = await _entriesCollection(habit.id).get();
+      for (var entry in entries.docs) {
+        batch.delete(entry.reference);
+      }
+      batch.delete(habit.reference);
+    }
+    final overallStreaks = await _overallStreaks.doc(currentUserId).get();
+    batch.delete(overallStreaks.reference);
+    final overallBestStreaks =
+        await _overallBestStreaks.doc(currentUserId).get();
+    batch.delete(overallBestStreaks.reference);
+    try {
+      await batch.commit();
+    } catch (e) {
+      print('Error clearing all data: $e');
+      throw Exception('Error clearing all data: $e');
+    }
+  }
+  Future<void> logOut(BuildContext context) async {
+    try {
+      await _auth.signOut();
+      Navigator.pushReplacement(context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()));
+    } catch (e) {
+      print('Error logging out: $e');
+      throw Exception('Error logging out: $e');
     }
   }
 }

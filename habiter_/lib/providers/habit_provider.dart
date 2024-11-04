@@ -1,6 +1,7 @@
 import 'dart:ffi';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:habiter_/firebase%20services/firebase_service.dart';
 import 'package:habiter_/models/habit.dart';
 
@@ -311,6 +312,16 @@ class HabitProvider with ChangeNotifier {
 
   Future<void> updateHabit(String habitId, String name, String detail) async {
     await _firebaseService.updateHabit(habitId, name, detail);
+    notifyListeners();
+  }
+
+  Future<void> clearAllData() async {
+    await _firebaseService.clearAllData();
+    notifyListeners();
+  }
+
+  Future<void> logOut(BuildContext context) async {
+    await _firebaseService.logOut(context);
     notifyListeners();
   }
 

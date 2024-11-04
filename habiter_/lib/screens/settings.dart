@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:habiter_/firebase%20services/firebase_auth.dart';
+import 'package:habiter_/providers/habit_provider.dart';
 import 'package:habiter_/providers/preferences_service.dart';
+import 'package:habiter_/screens/signIn/change.dart';
 import 'package:provider/provider.dart';
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -13,6 +16,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   void initState() {
     super.initState();
@@ -22,6 +26,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -99,7 +104,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _buildSettingsTile(
           icon: Icons.lock,
           title: 'Change Password',
-          onTap: () => _showChangePasswordDialog(),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => ChangePasswordScreen())),
           textColor: textColor,
           secondaryTextColor: secondaryTextColor,
         ),
@@ -255,8 +260,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           icon: Icons.logout,
           title: 'Log Out',
           titleColor: Colors.red,
-          onTap: () {
-            // Implement logout functionality
+          onTap: () async {
+            await Provider.of<HabitProvider>(context, listen: false).logOut(context);
           },
           textColor: textColor,
           secondaryTextColor: secondaryTextColor,
@@ -425,6 +430,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               onPressed: () {
                 // Implement delete all functionality
+                Provider.of<HabitProvider>(context, listen: false).clearAllData();
                 Navigator.of(context).pop();
               },
             ),
@@ -434,166 +440,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _showEditDialog(
-    String title,
-    String hint,
-    TextEditingController controller,
-    IconData icon,
-  ) async {
-    final isDarkMode = Provider.of<PreferencesProvider>(context, listen: false).isDarkMode;
-    final primaryColor = isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue;
-    final backgroundColor = isDarkMode ? Color(0xFF2A2A2A) : Colors.white;
-    final textColor = isDarkMode ? Colors.white : Colors.black;
-    final secondaryTextColor = isDarkMode ? Colors.white54 : Colors.black54;
-
-    return showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: backgroundColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(
-                icon,
-                color: primaryColor,
-                size: 28,
-              ),
-              SizedBox(width: 12),
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  color: textColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          content: TextField(
-            controller: controller,
-            style: GoogleFonts.poppins(color: textColor),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: GoogleFonts.poppins(color: secondaryTextColor),
-              enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: secondaryTextColor),
-              ),
-              focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(
-                  color: primaryColor,
-                ),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.poppins(color: secondaryTextColor),
-              ),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                'Save',
-                style: GoogleFonts.poppins(color: Colors.white),
-              ),
-              onPressed: () {
-                // Implement save functionality
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _showChangePasswordDialog() async {
-    final isDarkMode = Provider.of<PreferencesProvider>(context, listen: false).isDarkMode;
-    final primaryColor = isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue;
-    final backgroundColor = isDarkMode ? Color(0xFF2A2A2A) : Colors.white;
-    final textColor = isDarkMode ? Colors.white : Colors.black;
-    final secondaryTextColor = isDarkMode ? Colors.white54 : Colors.black54;
-
-    return showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: backgroundColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(
-                Icons.lock,
-                color: primaryColor,
-                size: 28,
-              ),
-              SizedBox(width: 12),
-              Text(
-                'Change Password',
-                style: GoogleFonts.poppins(
-                  color: textColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          content: TextField(
-            controller: _nameController,
-            style: GoogleFonts.poppins(color: textColor),
-            decoration: InputDecoration(
-              hintText: 'Enter your current password',
-              hintStyle: GoogleFonts.poppins(color: secondaryTextColor),
-              enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: secondaryTextColor),
-              ),
-              focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(
-                  color: primaryColor,
-                ),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.poppins(color: secondaryTextColor),
-              ),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                'Save',
-                style: GoogleFonts.poppins(color: Colors.white),
-              ),
-              onPressed: () {
-                // Implement save functionality
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
 }
