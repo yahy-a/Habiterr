@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:habiter_/models/habit.dart';
+import 'package:habiter_/providers/preferences_service.dart';
 import 'package:intl/intl.dart';
 import 'package:habiter_/providers/habit_provider.dart';
 import 'package:provider/provider.dart';
@@ -22,9 +23,6 @@ class _HomeContState extends State<HomeCont> {
   Widget build(BuildContext context) {
     return Consumer<HabitProvider>(
       builder: (context, habitProvider, child) {
-        // bool isToday = habitProvider.selectedDate.day == DateTime.now().day &&
-        //     habitProvider.selectedDate.month == DateTime.now().month &&
-        //     habitProvider.selectedDate.year == DateTime.now().year;
         return SafeArea(
           child: CustomScrollView(
             physics: const BouncingScrollPhysics(
@@ -33,10 +31,6 @@ class _HomeContState extends State<HomeCont> {
             slivers: [
               SliverToBoxAdapter(child: _buildHeader()),
               SliverToBoxAdapter(child: _buildDatePicker()),
-              // isToday? SliverToBoxAdapter(child: _buildStreakInfo()): SliverToBoxAdapter(),
-              // isToday
-              //     ? SliverToBoxAdapter(child: _buildProgressCircle())
-              //     : SliverToBoxAdapter(),
               SliverToBoxAdapter(child: _buildStreakInfo()),
               SliverToBoxAdapter(child: _buildProgressCircle()),
               SliverToBoxAdapter(child: _buildHabitList()),
@@ -51,6 +45,7 @@ class _HomeContState extends State<HomeCont> {
     return Consumer<HabitProvider>(
       builder: (context, habitProvider, child) {
         String formattedDate = DateFormat('dd-MM-yyyy').format(habitProvider.selectedDate);
+        final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 16),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -58,9 +53,12 @@ class _HomeContState extends State<HomeCont> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
+              colors: isDarkMode ? [
                 Color(0xFF2A2A2A),
                 Color(0xFF1F1F1F),
+              ] : [
+                Colors.white,
+                Colors.grey[100]!,
               ],
             ),
             borderRadius: BorderRadius.circular(16),
@@ -96,7 +94,7 @@ class _HomeContState extends State<HomeCont> {
                       formattedDate,
                       key: ValueKey<String>(formattedDate),
                       style: GoogleFonts.poppins(
-                        color: Colors.white,
+                        color: isDarkMode ? Colors.white : Colors.black,
                         fontSize: 24,
                         fontWeight: FontWeight.w600,
                       ),
@@ -113,12 +111,12 @@ class _HomeContState extends State<HomeCont> {
                     child: Container(
                       padding: EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Color.fromARGB(255, 187, 134, 252).withOpacity(0.2),
+                        color: (isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue).withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         habitProvider.isFilled ? Icons.notifications : Icons.notifications_outlined,
-                        color: Color.fromARGB(255, 187, 134, 252),
+                        color: isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue,
                         size: 28,
                       ),
                     ),
@@ -133,81 +131,91 @@ class _HomeContState extends State<HomeCont> {
   }
 
   Widget _buildDatePicker() {
+    final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
     return Container(
       height: 80,
+      color: isDarkMode ? Colors.transparent : Colors.white,
       child: Consumer<HabitProvider>(
-        builder: (context, habitProvider, child) => ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemBuilder: (context, index) {
-            DateTime firstDate = DateTime.now().subtract(Duration(days: 4));
-            DateTime date = firstDate.add(Duration(days: index));
-            bool isSelected = date.day == habitProvider.selectedDate.day &&
-                date.month == habitProvider.selectedDate.month &&
-                date.year == habitProvider.selectedDate.year;
-            bool isCurrentDay = date.day == DateTime.now().day &&
-                date.month == DateTime.now().month &&
-                date.year == DateTime.now().year;
-            return GestureDetector(
-              onTap: () {
-                habitProvider.setSelectedDate(date);
-              },
-              child: Container(
-                width: 65,
-                margin: EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: isSelected
-                        ? [
-                            Color.fromARGB(255, 187, 134, 252).withOpacity(0.3),
-                            Color.fromARGB(255, 187, 134, 252).withOpacity(0.1),
-                          ]
-                        : [
-                            Color(0xFF2A2A2A),
-                            Color(0xFF1F1F1F),
-                          ],
+        builder: (context, habitProvider, child) {
+          final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemBuilder: (context, index) {
+              DateTime firstDate = DateTime.now().subtract(Duration(days: 4));
+              DateTime date = firstDate.add(Duration(days: index));
+              bool isSelected = date.day == habitProvider.selectedDate.day &&
+                  date.month == habitProvider.selectedDate.month &&
+                  date.year == habitProvider.selectedDate.year;
+              bool isCurrentDay = date.day == DateTime.now().day &&
+                  date.month == DateTime.now().month &&
+                  date.year == DateTime.now().year;
+              return GestureDetector(
+                onTap: () {
+                  habitProvider.setSelectedDate(date);
+                },
+                child: Container(
+                  width: 65,
+                  margin: EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: isSelected
+                          ? [
+                              (isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue).withOpacity(0.3),
+                              (isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue).withOpacity(0.1),
+                            ]
+                          : isDarkMode ? [
+                              Color(0xFF2A2A2A),
+                              Color(0xFF2A2A2A),
+                              Color(0xFF1F1F1F),
+                            ] : [
+                              Colors.white,
+                              Colors.grey[200]!,
+                              Colors.grey[200]!,
+                            ],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDarkMode ? const Color.fromARGB(60, 37, 36, 36) : Colors.white.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                    border: isCurrentDay
+                        ? Border.all(
+                            color: (isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue)
+                                .withOpacity(0.5),
+                            width: 1.5,
+                          )
+                        : null,
                   ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                  border: isCurrentDay
-                      ? Border.all(
-                          color: Color.fromARGB(255, 187, 134, 252)
-                              .withOpacity(0.5),
-                          width: 1.5,
-                        )
-                      : null,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      date.day.toString(),
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        date.day.toString(),
+                        style: GoogleFonts.poppins(
+                          color: isDarkMode ? Colors.white : Colors.black,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    Text(
-                      DateFormat('MMM').format(date),
-                      style: GoogleFonts.poppins(
-                        color: Colors.white70,
-                        fontSize: 14,
+                      Text(
+                        DateFormat('MMM').format(date),
+                        style: GoogleFonts.poppins(
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                          fontSize: 14,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -216,269 +224,283 @@ class _HomeContState extends State<HomeCont> {
     return Container(
       margin: EdgeInsets.all(12),
       child: Consumer<HabitProvider>(
-        builder: (context, habitProvider, child) =>
-            FutureBuilder<Map<String, int>>(
-          future: Future.wait([
-            habitProvider.getOverallStreak(),
-            habitProvider.getOverallBestStreak()
-          ]).then((values) => {'streak': values[0], 'bestStreak': values[1]}),
-          builder: (context, snapshot) {
-            final streakData = snapshot.data ?? {'streak': 0, 'bestStreak': 0};
-            return Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF2A2A2A),
-                    Color(0xFF1F1F1F),
+        builder: (context, habitProvider, child) {
+          final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
+          return FutureBuilder<Map<String, int>>(
+            future: Future.wait([
+              habitProvider.getOverallStreak(),
+              habitProvider.getOverallBestStreak()
+            ]).then((values) => {'streak': values[0], 'bestStreak': values[1]}),
+            builder: (context, snapshot) {
+              final streakData = snapshot.data ?? {'streak': 0, 'bestStreak': 0};
+              return Container(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isDarkMode ? [
+                      Color(0xFF2A2A2A),
+                      Color(0xFF1F1F1F),
+                    ] : [
+                      Colors.white,
+                      Colors.grey[100]!,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black38,
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                  border: Border.all(
+                    color: (isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue).withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.local_fire_department_rounded,
+                          color: isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue,
+                          size: 20,
+                        ),
+                        SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Current overall Streak',
+                              style: GoogleFonts.poppins(
+                                color: isDarkMode ? Colors.white70 : Colors.black54,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              '${streakData['streak']} days',
+                              style: GoogleFonts.poppins(
+                                color: isDarkMode ? Colors.white : Colors.black,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Container(
+                      height: 30,
+                      width: 1,
+                      color: (isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue).withOpacity(0.2),
+                    ),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.emoji_events_rounded,
+                          color: Colors.amber,
+                          size: 20,
+                        ),
+                        SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Best Streak',
+                              style: GoogleFonts.poppins(
+                                color: isDarkMode ? Colors.white70 : Colors.black54,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              '${streakData['bestStreak']} days',
+                              style: GoogleFonts.poppins(
+                                color: isDarkMode ? Colors.white : Colors.black,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black38,
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-                border: Border.all(
-                  color: Color.fromARGB(255, 187, 134, 252).withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.local_fire_department_rounded,
-                        color: Color.fromARGB(255, 187, 134, 252),
-                        size: 20,
-                      ),
-                      SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Current overall Streak',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white70,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            '${streakData['streak']} days',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  Container(
-                    height: 30,
-                    width: 1,
-                    color: Color.fromARGB(255, 187, 134, 252).withOpacity(0.2),
-                  ),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.emoji_events_rounded,
-                        color: Colors.amber,
-                        size: 20,
-                      ),
-                      SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Best Streak',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white70,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            '${streakData['bestStreak']} days',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
+              );
+            },
+          );
+        },
       ),
     );
   }
 
   Widget _buildProgressCircle() {
     return Consumer<HabitProvider>(
-      builder: (context, habitProvider, child) => Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.purple.withOpacity(0.3),
-                      blurRadius: 20,
-                      spreadRadius: 5,
-                    ),
-                  ],
-                ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      height: 140,
-                      width: 140,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFF2A2D3E),
-                            Color(0xFF1F1F1F),
-                          ],
-                        ),
+      builder: (context, habitProvider, child) {
+        final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
+        return Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isDarkMode ? Colors.purple : Colors.blue).withOpacity(0.3),
+                        blurRadius: 20,
+                        spreadRadius: 5,
                       ),
-                    ),
-                    SizedBox(
-                      height: 130,
-                      width: 130,
-                      child: TweenAnimationBuilder<double>(
-                        duration: const Duration(milliseconds: 1500),
-                        curve: Curves.easeInOutCubic,
-                        tween: Tween<double>(
-                          begin: 0,
-                          end: habitProvider.progressValue,
-                        ),
-                        builder: (context, value, _) =>
-                            CircularProgressIndicator(
-                          value: value,
-                          strokeWidth: 12,
-                          backgroundColor: Colors.grey[800],
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color.fromARGB(255, 187, 134, 252),
+                    ],
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        height: 140,
+                        width: 140,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: isDarkMode ? [
+                              Color(0xFF2A2D3E),
+                              Color(0xFF1F1F1F),
+                            ] : [
+                              Colors.white,
+                              Colors.grey[100]!,
+                            ],
                           ),
                         ),
                       ),
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TweenAnimationBuilder<double>(
-                          duration: const Duration(milliseconds: 1500),
+                      SizedBox(
+                        height: 130,
+                        width: 130,
+                        child: TweenAnimationBuilder<double>(
+                          duration: const Duration(milliseconds: 2500),
                           curve: Curves.easeInOutCubic,
                           tween: Tween<double>(
                             begin: 0,
                             end: habitProvider.progressValue,
                           ),
-                          builder: (context, value, _) => Text(
-                            '${(value * 100).toInt()}%',
-                            style: GoogleFonts.rajdhani(
-                              color: Colors.white,
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.5,
+                          builder: (context, value, _) =>
+                              CircularProgressIndicator(
+                            value: value,
+                            strokeWidth: 12,
+                            backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[300],
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue,
                             ),
                           ),
                         ),
-                        Text(
-                          'PROGRESS',
-                          style: GoogleFonts.rajdhani(
-                            color: Colors.grey[400],
-                            fontSize: 12,
-                            letterSpacing: 2,
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TweenAnimationBuilder<double>(
+                            duration: const Duration(milliseconds: 2500),
+                            curve: Curves.easeInOutCubic,
+                            tween: Tween<double>(
+                              begin: 0,
+                              end: habitProvider.progressValue,
+                            ),
+                            builder: (context, value, _) => Text(
+                              '${(value * 100).toInt()}%',
+                              style: GoogleFonts.rajdhani(
+                                color: isDarkMode ? Colors.white : Colors.black,
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF2A2D3E),
-                      Color(0xFF1F1F1F),
+                          Text(
+                            'PROGRESS',
+                            style: GoogleFonts.rajdhani(
+                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                              fontSize: 12,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 10,
-                      offset: Offset(0, 5),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${habitProvider.progress}/${habitProvider.total}',
-                      style: GoogleFonts.rajdhani(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: isDarkMode ? [
+                        Color(0xFF2A2D3E),
+                        Color(0xFF1F1F1F),
+                      ] : [
+                        Colors.white,
+                        Colors.grey[100]!,
+                      ],
                     ),
-                    Text(
-                      'COMPLETED',
-                      style: GoogleFonts.rajdhani(
-                        color: Colors.grey[400],
-                        fontSize: 14,
-                        letterSpacing: 2,
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 10,
+                        offset: Offset(0, 5),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${habitProvider.progress}/${habitProvider.total}',
+                        style: GoogleFonts.rajdhani(
+                          color: isDarkMode ? Colors.white : Colors.black,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'COMPLETED',
+                        style: GoogleFonts.rajdhani(
+                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                          fontSize: 14,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 30),
-        ],
-      ),
+              ],
+            ),
+            SizedBox(height: 30),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildHabitList() {
     return Consumer<HabitProvider>(
       builder: (context, habitProvider, child) {
+        final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
         bool isToday = habitProvider.selectedDate.day == DateTime.now().day &&
             habitProvider.selectedDate.month == DateTime.now().month &&
             habitProvider.selectedDate.year == DateTime.now().year;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Title Section
             Container(
               padding: EdgeInsets.symmetric(vertical: 8, horizontal: 20),
               decoration: BoxDecoration(
@@ -486,8 +508,8 @@ class _HomeContState extends State<HomeCont> {
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                   colors: [
-                    Color.fromARGB(255, 187, 134, 252).withOpacity(0.3),
-                    Color.fromARGB(255, 187, 134, 252).withOpacity(0.15),
+                    (isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue).withOpacity(0.3),
+                    (isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue).withOpacity(0.15),
                     Colors.transparent,
                   ],
                 ),
@@ -496,15 +518,14 @@ class _HomeContState extends State<HomeCont> {
               child: Text(
                 "${isToday ? "Today's" : "Scheduled"} Habits",
                 style: GoogleFonts.rajdhani(
-                  color: Colors.white,
+                  color: isDarkMode ? Colors.white : Colors.black,
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.5,
                 ),
               ),
             ),
-            SizedBox(height: 16), // Add spacing between title and list
-            // Habits List
+            SizedBox(height: 16),
             StreamBuilder<List<Habit>>(
               stream: habitProvider.habitsStream,
               builder: (context, snapshot) {
@@ -522,14 +543,17 @@ class _HomeContState extends State<HomeCont> {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [
+                        colors: isDarkMode ? [
                           Color(0xFF2A2A2A),
                           Color(0xFF1F1F1F),
+                        ] : [
+                          Colors.white,
+                          Colors.grey[100]!,
                         ],
                       ),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: Color.fromARGB(255, 187, 134, 252).withOpacity(0.2),
+                        color: (isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue).withOpacity(0.2),
                         width: 1,
                       ),
                     ),
@@ -537,14 +561,14 @@ class _HomeContState extends State<HomeCont> {
                       children: [
                         Icon(
                           Icons.add_task_rounded,
-                          color: Color.fromARGB(255, 187, 134, 252),
+                          color: isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue,
                           size: 48,
                         ),
                         SizedBox(height: 16),
                         Text(
                           'No Habits Yet',
                           style: GoogleFonts.poppins(
-                            color: Colors.white,
+                            color: isDarkMode ? Colors.white : Colors.black,
                             fontSize: 24,
                             fontWeight: FontWeight.w600,
                           ),
@@ -554,7 +578,7 @@ class _HomeContState extends State<HomeCont> {
                           'Start building better habits by adding your first habit',
                           textAlign: TextAlign.center,
                           style: GoogleFonts.poppins(
-                            color: Colors.white70,
+                            color: isDarkMode ? Colors.white70 : Colors.black54,
                             fontSize: 16,
                           ),
                         ),
@@ -565,7 +589,6 @@ class _HomeContState extends State<HomeCont> {
 
                 List<Habit> habits = snapshot.data!;
 
-                // Move progress calculation to post frame callback
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   int progress = habits
                       .where((habit) =>
@@ -574,7 +597,6 @@ class _HomeContState extends State<HomeCont> {
                   int total = habits.length;
                   habitProvider.setProgress(progress, total);
                 });
-                // Disable scrolling in ListView.builder by using NeverScrollableScrollPhysics
                 return ListView.builder(
                   key: ValueKey(habits.length),
                   physics: NeverScrollableScrollPhysics(),
@@ -594,6 +616,7 @@ class _HomeContState extends State<HomeCont> {
 
   Widget _buildHabitItem(Habit habit) {
     return Consumer<HabitProvider>(builder: (context, habitProvider, child) {
+      final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
       bool isToday = habitProvider.selectedDate.day == DateTime.now().day &&
           habitProvider.selectedDate.month == DateTime.now().month &&
           habitProvider.selectedDate.year == DateTime.now().year;
@@ -645,7 +668,7 @@ class _HomeContState extends State<HomeCont> {
             context: context,
             builder: (BuildContext context) {
               return AlertDialog(
-                backgroundColor: Color(0xFF2A2A2A),
+                backgroundColor: isDarkMode ? Color(0xFF2A2A2A) : Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(
@@ -664,7 +687,7 @@ class _HomeContState extends State<HomeCont> {
                     Text(
                       'Delete Habit',
                       style: GoogleFonts.poppins(
-                        color: Colors.white,
+                        color: isDarkMode ? Colors.white : Colors.black,
                         fontSize: 20,
                         fontWeight: FontWeight.w600,
                       ),
@@ -674,7 +697,7 @@ class _HomeContState extends State<HomeCont> {
                 content: Text(
                   'Are you sure you want to delete this habit? This action cannot be undone.',
                   style: GoogleFonts.poppins(
-                    color: Colors.white70,
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
                     fontSize: 16,
                     height: 1.5,
                   ),
@@ -690,7 +713,7 @@ class _HomeContState extends State<HomeCont> {
                     child: Text(
                       'Cancel',
                       style: GoogleFonts.poppins(
-                        color: Colors.white70,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                       ),
@@ -729,18 +752,18 @@ class _HomeContState extends State<HomeCont> {
               context: context,
               builder: (BuildContext context) {
                 return AlertDialog(
-                  backgroundColor: Color(0xFF2A2A2A),
+                  backgroundColor: isDarkMode ? Color(0xFF2A2A2A) : Colors.white,
                   title: Text(
                     'Error',
                     style: GoogleFonts.poppins(
-                      color: Colors.white,
+                      color: isDarkMode ? Colors.white : Colors.black,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   content: Text(
                     'Error deleting habit',
                     style: GoogleFonts.poppins(
-                      color: Colors.white70,
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
                     ),
                   ),
                   actions: [
@@ -748,7 +771,7 @@ class _HomeContState extends State<HomeCont> {
                       child: Text(
                         'OK',
                         style: GoogleFonts.poppins(
-                          color: Colors.purple,
+                          color: isDarkMode ? Colors.purple : Colors.blue,
                         ),
                       ),
                       onPressed: () {
@@ -762,44 +785,50 @@ class _HomeContState extends State<HomeCont> {
           }
         },
         child: Container(
-          margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6), // Reduced vertical margin
+          margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: isCompleted
-                  ? [
-                      Color(0xFF9C27B0), // Purple 500
-                      Color(0xFF7B1FA2), // Purple 700
+                  ? isDarkMode ? [
+                      Color(0xFF9C27B0),
+                      Color(0xFF7B1FA2),
+                    ] : [
+                      Colors.blue,
+                      Colors.blue[700]!,
                     ]
-                  : [
+                  : isDarkMode ? [
                       Color(0xFF2A2A2A),
                       Color(0xFF1F1F1F),
+                    ] : [
+                      Colors.white,
+                      Colors.grey[100]!,
                     ],
             ),
-            borderRadius: BorderRadius.circular(10), // Slightly reduced border radius
+            borderRadius: BorderRadius.circular(10),
             boxShadow: [
               BoxShadow(
                 color: Colors.black26,
-                blurRadius: 6, // Reduced blur
+                blurRadius: 6,
                 offset: Offset(0, 2),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(10), // Match container border radius
+            borderRadius: BorderRadius.circular(10),
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16.0, 8.0, 8.0, 0), // Reduced padding
+                  padding: const EdgeInsets.fromLTRB(16.0, 8.0, 8.0, 0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         habit.name,
                         style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 18, // Slightly reduced font size
+                          color: isDarkMode ? Colors.white : Colors.black,
+                          fontSize: 18,
                           fontWeight: FontWeight.w500,
                           letterSpacing: 0.5,
                         ),
@@ -820,24 +849,24 @@ class _HomeContState extends State<HomeCont> {
                               child: AnimatedContainer(
                                 duration: Duration(milliseconds: 0),
                                 curve: Curves.easeInOut,
-                                width: 32, // Increased size
-                                height: 32, // Increased size
+                                width: 32,
+                                height: 32,
                                 margin: EdgeInsets.only(right: 8),
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
                                     color: isCompleted
-                                        ? Color(0xFFCE93D8).withOpacity(0.6) // Purple 200
-                                        : Colors.white30,
+                                        ? isDarkMode ? Color(0xFFCE93D8).withOpacity(0.6) : Colors.blue[200]!.withOpacity(0.6)
+                                        : isDarkMode ? Colors.white30 : Colors.black26,
                                     width: 1.5,
                                   ),
                                   color: isCompleted
-                                      ? Color(0xFF9C27B0) // Purple 500
+                                      ? isDarkMode ? Color(0xFF9C27B0) : Colors.blue
                                       : Colors.transparent,
                                   boxShadow: [
                                     if (isCompleted)
                                       BoxShadow(
-                                        color: Color(0xFF9C27B0).withOpacity(0.3),
+                                        color: (isDarkMode ? Color(0xFF9C27B0) : Colors.blue).withOpacity(0.3),
                                         spreadRadius: 1,
                                       )
                                   ],
@@ -848,7 +877,7 @@ class _HomeContState extends State<HomeCont> {
                                     child: isCompleted
                                         ? Icon(Icons.check,
                                             key: ValueKey(true),
-                                            size: 18, // Increased icon size
+                                            size: 18,
                                             color: Colors.white)
                                         : SizedBox(key: ValueKey(false)),
                                   ),
@@ -856,13 +885,13 @@ class _HomeContState extends State<HomeCont> {
                               ),
                             ),
                           PopupMenuButton(
+                            color: isDarkMode ? Color(0xFF2A2A2A) : Colors.white,
                             icon: Icon(
                               Icons.more_horiz,
-                              color: Colors.white60,
+                              color: isDarkMode ? Colors.white : Colors.black,
                               size: 18,
                             ),
                             padding: EdgeInsets.zero,
-                            color: Color(0xFF2A2A2A),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                               side: BorderSide.none
@@ -878,18 +907,15 @@ class _HomeContState extends State<HomeCont> {
                                   showDialog(
                                     context: context,
                                     builder: (context) => AlertDialog(
-                                      backgroundColor: Color(0xFF2A2A2A),
+                                      backgroundColor: isDarkMode ? Color(0xFF2A2A2A) : Colors.white,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
-                                        side: BorderSide(
-                                          color: Colors.white.withOpacity(0.1),
-                                          width: 1,
-                                        ),
+                                        side: BorderSide.none,
                                       ),
                                       title: Text(
                                         'Edit Habit',
                                         style: GoogleFonts.poppins(
-                                          color: Colors.white,
+                                          color: isDarkMode ? Colors.white : Colors.black87,
                                           fontSize: 18,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -899,35 +925,35 @@ class _HomeContState extends State<HomeCont> {
                                         children: [
                                           TextField(
                                             controller: nameController,
-                                            style: GoogleFonts.poppins(color: Colors.white),
+                                            style: GoogleFonts.poppins(color: isDarkMode ? Colors.white : Colors.black87),
                                             decoration: InputDecoration(
                                               labelText: 'Habit Name',
-                                              labelStyle: GoogleFonts.poppins(color: Colors.white70),
+                                              labelStyle: GoogleFonts.poppins(color: isDarkMode ? Colors.white70 : Colors.black54),
                                               enabledBorder: OutlineInputBorder(
                                                 borderRadius: BorderRadius.circular(8),
-                                                borderSide: BorderSide(color: Colors.white30),
+                                                borderSide: BorderSide(color: isDarkMode ? Colors.white30 : Colors.black26),
                                               ),
                                               focusedBorder: OutlineInputBorder(
                                                 borderRadius: BorderRadius.circular(8),
-                                                borderSide: BorderSide(color: Color(0xFF9C27B0)),
+                                                borderSide: BorderSide(color: isDarkMode ? Color(0xFF9C27B0) : Colors.blue),
                                               ),
                                             ),
                                           ),
                                           SizedBox(height: 16),
                                           TextField(
                                             controller: detailController,
-                                            style: GoogleFonts.poppins(color: Colors.white),
+                                            style: GoogleFonts.poppins(color: isDarkMode ? Colors.white : Colors.black87),
                                             maxLines: 3,
                                             decoration: InputDecoration(
                                               labelText: 'Habit Detail',
-                                              labelStyle: GoogleFonts.poppins(color: Colors.white70),
+                                              labelStyle: GoogleFonts.poppins(color: isDarkMode ? Colors.white70 : Colors.black54),
                                               enabledBorder: OutlineInputBorder(
                                                 borderRadius: BorderRadius.circular(8),
-                                                borderSide: BorderSide(color: Colors.white30),
+                                                borderSide: BorderSide(color: isDarkMode ? Colors.white30 : Colors.black26),
                                               ),
                                               focusedBorder: OutlineInputBorder(
                                                 borderRadius: BorderRadius.circular(8),
-                                                borderSide: BorderSide(color: Color(0xFF9C27B0)),
+                                                borderSide: BorderSide(color: isDarkMode ? Color(0xFF9C27B0) : Colors.blue),
                                               ),
                                             ),
                                           ),
@@ -939,7 +965,7 @@ class _HomeContState extends State<HomeCont> {
                                           child: Text(
                                             'Cancel',
                                             style: GoogleFonts.poppins(
-                                              color: Colors.white70,
+                                              color: isDarkMode ? Colors.white70 : Colors.black54,
                                             ),
                                           ),
                                         ),
@@ -950,7 +976,7 @@ class _HomeContState extends State<HomeCont> {
                                             Navigator.pop(context);
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: Color(0xFF9C27B0),
+                                            backgroundColor: isDarkMode ? Color(0xFF9C27B0) : Colors.blue,
                                             shape: RoundedRectangleBorder(
                                               borderRadius: BorderRadius.circular(8),
                                             ),
@@ -971,14 +997,14 @@ class _HomeContState extends State<HomeCont> {
                                   children: [
                                     Icon(
                                       Icons.edit,
-                                      color: Colors.white,
+                                      color: isDarkMode ? Colors.white : Colors.black,
                                       size: 16,
                                     ),
                                     SizedBox(width: 6),
                                     Text(
                                       'Edit',
                                       style: GoogleFonts.poppins(
-                                        color: Colors.white,
+                                        color: isDarkMode ? Colors.white : Colors.black,
                                         fontSize: 12,
                                       ),
                                     ),
@@ -988,7 +1014,7 @@ class _HomeContState extends State<HomeCont> {
                             ],
                             onSelected: (value) {
                               if (value == 'edit') {
-                                
+                                // Edit action is handled in onTap
                               }
                             },
                           ),
@@ -999,7 +1025,7 @@ class _HomeContState extends State<HomeCont> {
                 ),
                 Container(
                   height: 1,
-                  margin: EdgeInsets.symmetric(horizontal: 10), // Reduced margin
+                  margin: EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -1011,7 +1037,7 @@ class _HomeContState extends State<HomeCont> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(10.0), // Reduced padding
+                  padding: const EdgeInsets.all(10.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -1019,8 +1045,8 @@ class _HomeContState extends State<HomeCont> {
                         child: Text(
                           habit.detail,
                           style: GoogleFonts.poppins(
-                            color: Colors.white70,
-                            fontSize: 14, // Reduced font size
+                            color: isDarkMode ? Colors.white : Colors.black,
+                            fontSize: 14,
                             height: 1.3,
                           ),
                           maxLines: 2,
@@ -1028,8 +1054,7 @@ class _HomeContState extends State<HomeCont> {
                         ),
                       ),
                       Container(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 8, vertical: 3), // Reduced padding
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(14),
@@ -1040,14 +1065,14 @@ class _HomeContState extends State<HomeCont> {
                             Icon(
                               Icons.local_fire_department,
                               color: Colors.orange.shade400,
-                              size: 12, // Reduced icon size
+                              size: 12,
                             ),
                             SizedBox(width: 4),
                             Text(
                               habit.currentStreak.toString(),
                               style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontSize: 12, // Reduced font size
+                                color: isDarkMode ? Colors.white : Colors.black,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:habiter_/providers/habit_provider.dart';
+import 'package:habiter_/providers/preferences_service.dart';
 import 'package:provider/provider.dart';
 
 class AddHabitPage extends StatefulWidget {
@@ -47,19 +48,24 @@ class _AddHabitPageState extends State<AddHabitPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
     return Scaffold(
-      backgroundColor: Color(0xFF1E1E1E),
+      backgroundColor: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
       appBar: AppBar(
-        backgroundColor: Color(0xFF2A2A2A),
+        backgroundColor: isDarkMode ? Color(0xFF2A2A2A) : Colors.white,
+        elevation: isDarkMode ? 0 : 1,
         title: Text(
           'Create New Habit',
           style: GoogleFonts.nunito(
-            color: Colors.white,
+            color: isDarkMode ? Colors.white : Colors.black87,
             fontWeight: FontWeight.bold,
           ),
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(
+            Icons.arrow_back, 
+            color: isDarkMode ? Colors.white : Colors.black87
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -139,12 +145,13 @@ class _AddHabitPageState extends State<AddHabitPage> {
   }
 
   Widget _buildSectionTitle(String title) {
+    final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Text(
         title,
         style: GoogleFonts.nunito(
-          color: Colors.white,
+          color: isDarkMode ? Colors.white : Colors.black87,
           fontSize: 18,
           fontWeight: FontWeight.bold,
         ),
@@ -160,15 +167,18 @@ class _AddHabitPageState extends State<AddHabitPage> {
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
   }) {
+    final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
     return TextFormField(
-      style: GoogleFonts.nunito(color: Colors.white),
+      style: GoogleFonts.nunito(
+        color: isDarkMode ? Colors.white : Colors.black87
+      ),
       maxLines: maxLines,
       controller: controller,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: GoogleFonts.nunito(color: Colors.grey[400]),
         filled: true,
-        fillColor: Color(0xFF2A2A2A),
+        fillColor: isDarkMode ? Color(0xFF2A2A2A) : Colors.grey[100],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,
@@ -182,11 +192,12 @@ class _AddHabitPageState extends State<AddHabitPage> {
   }
 
   Widget _buildDropdown() {
+    final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
     return Consumer<HabitProvider>(
       builder: (context, habitProvider, child) => Container(
         padding: EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: Color(0xFF2A2A2A),
+          color: isDarkMode ? Color(0xFF2A2A2A) : Colors.grey[100],
           borderRadius: BorderRadius.circular(8),
         ),
         child: DropdownButtonHideUnderline(
@@ -194,8 +205,8 @@ class _AddHabitPageState extends State<AddHabitPage> {
             borderRadius: BorderRadius.circular(8),
             value: habitProvider.frequency,
             isExpanded: true,
-            dropdownColor: Color(0xFF2A2A2A),
-            style: GoogleFonts.nunito(color: Colors.white),
+            dropdownColor: isDarkMode ? Color(0xFF2A2A2A) : Colors.grey[100],
+            style: GoogleFonts.nunito(color: isDarkMode ? Colors.white : Colors.black87),
             items: _frequencyOptions.map((String value) {
               return DropdownMenuItem<String>(
                 value: value,
@@ -335,6 +346,7 @@ class _AddHabitPageState extends State<AddHabitPage> {
   }
 
   Widget _buildCreateButton() {
+    final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
     return Consumer<HabitProvider>(
       builder: (context, habitProvider, child) {
         if (habitProvider.isLoading) {
@@ -346,7 +358,7 @@ class _AddHabitPageState extends State<AddHabitPage> {
           height: 50,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purple,
+              backgroundColor: isDarkMode ? Colors.purple : Colors.blue,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:habiter_/providers/preferences_service.dart';
 import 'package:provider/provider.dart';
-import 'package:habiter_/providers/habit_provider.dart';
-
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -11,12 +10,13 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool isDarkMode = true;
-  bool isNotificationsEnabled = false;
-  TimeOfDay notificationTime = TimeOfDay(hour: 20, minute: 0);
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+
+  void initState() {
+    super.initState();
+  }
 
   @override
   void dispose() {
@@ -27,35 +27,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
+    final primaryColor = isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue;
+    final backgroundColor = isDarkMode ? Color(0xFF2A2A2A) : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final secondaryTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+    final gradientColors = isDarkMode 
+      ? [Color(0xFF2A2A2A), Color(0xFF1F1F1F)]
+      : [Colors.white, Colors.grey[100]!];
+
     return SafeArea(
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
         slivers: [
-          SliverToBoxAdapter(child: _buildHeader()),
-          SliverToBoxAdapter(child: _buildProfileSettings()),
-          SliverToBoxAdapter(child: _buildSecuritySettings()),
-          SliverToBoxAdapter(child: _buildGeneralSettings()),
-          SliverToBoxAdapter(child: _buildNotificationSettings()),
-          SliverToBoxAdapter(child: _buildDataSettings()),
+          SliverToBoxAdapter(child: _buildHeader(primaryColor, backgroundColor, textColor, gradientColors)),
+          SliverToBoxAdapter(child: _buildSecuritySettings(primaryColor, backgroundColor, textColor, secondaryTextColor, gradientColors)),
+          SliverToBoxAdapter(child: _buildGeneralSettings(primaryColor, backgroundColor, textColor, secondaryTextColor, gradientColors)),
+          SliverToBoxAdapter(child: _buildNotificationSettings(primaryColor, backgroundColor, textColor, secondaryTextColor, gradientColors)),
+          SliverToBoxAdapter(child: _buildDataSettings(primaryColor, backgroundColor, textColor, secondaryTextColor, gradientColors)),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(Color primaryColor, Color backgroundColor, Color textColor, List<Color> gradientColors) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF2A2A2A),
-            Color(0xFF1F1F1F),
-          ],
+          colors: gradientColors,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
@@ -70,14 +75,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Icon(
             Icons.settings,
-            color: Color.fromARGB(255, 187, 134, 252),
+            color: primaryColor,
             size: 30,
           ),
           SizedBox(width: 16),
           Text(
             'Settings',
             style: GoogleFonts.poppins(
-              color: Colors.white,
+              color: textColor,
               fontSize: 24,
               fontWeight: FontWeight.w600,
             ),
@@ -87,42 +92,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildProfileSettings() {
-    return _buildSettingsSection(
-      'Profile',
-      [
-        _buildSettingsTile(
-          icon: Icons.account_circle,
-          title: 'Edit Profile Picture',
-          onTap: () {
-            // Implement profile picture editing
-          },
-        ),
-        _buildSettingsTile(
-          icon: Icons.person,
-          title: 'Edit Name',
-          onTap: () => _showEditDialog(
-            'Edit Name',
-            'Enter your new name',
-            _nameController,
-            Icons.person,
-          ),
-        ),
-        _buildSettingsTile(
-          icon: Icons.email,
-          title: 'Edit Email',
-          onTap: () => _showEditDialog(
-            'Edit Email',
-            'Enter your new email',
-            _emailController,
-            Icons.email,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSecuritySettings() {
+  Widget _buildSecuritySettings(Color primaryColor, Color backgroundColor, Color textColor, Color secondaryTextColor, List<Color> gradientColors) {
     return _buildSettingsSection(
       'Security',
       [
@@ -130,38 +100,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
           icon: Icons.lock,
           title: 'Change Password',
           onTap: () => _showChangePasswordDialog(),
+          textColor: textColor,
+          secondaryTextColor: secondaryTextColor,
         ),
         _buildSettingsTile(
           icon: Icons.security,
           title: 'Two-Factor Authentication',
-          trailing: Switch(
-            value: false, // Replace with actual 2FA state
-            onChanged: (value) {
-              // Implement 2FA toggle
-            },
-            activeColor: Color.fromARGB(255, 187, 134, 252),
+          trailing: Consumer<PreferencesProvider>(
+            builder: (context, preferencesProvider, _) {
+              return Switch(
+                value: preferencesProvider.twoFactorAuthenticationEnabled,
+                onChanged: (value) async {
+                  await preferencesProvider.setTwoFactorAuthenticationEnabled(value);
+                },
+                activeColor: primaryColor,
+              );
+            }
           ),
+          textColor: textColor,
+          secondaryTextColor: secondaryTextColor,
         ),
       ],
+      primaryColor: primaryColor,
+      backgroundColor: backgroundColor,
+      gradientColors: gradientColors,
+      textColor: textColor,
     );
   }
 
-  Widget _buildGeneralSettings() {
+  Widget _buildGeneralSettings(Color primaryColor, Color backgroundColor, Color textColor, Color secondaryTextColor, List<Color> gradientColors) {
     return _buildSettingsSection(
       'General',
       [
         _buildSettingsTile(
           icon: Icons.dark_mode,
           title: 'Dark Mode',
-          trailing: Switch(
-            value: isDarkMode,
-            onChanged: (value) {
-              setState(() {
-                isDarkMode = value;
-              });
-            },
-            activeColor: Color.fromARGB(255, 187, 134, 252),
+          trailing: Consumer<PreferencesProvider>(
+            builder: (context, preferencesProvider, _) {
+              return Switch(
+                value: preferencesProvider.isDarkMode,
+                onChanged: (value) async {
+                  await preferencesProvider.setThemeMode(value);
+                },
+                activeColor: primaryColor,
+              );
+            }
           ),
+          textColor: textColor,
+          secondaryTextColor: secondaryTextColor,
         ),
         _buildSettingsTile(
           icon: Icons.language,
@@ -169,53 +155,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
           trailing: Text(
             'English',
             style: GoogleFonts.poppins(
-              color: Colors.white70,
+              color: secondaryTextColor,
             ),
           ),
           onTap: () {
             // Implement language selection
           },
+          textColor: textColor,
+          secondaryTextColor: secondaryTextColor,
         ),
       ],
+      primaryColor: primaryColor,
+      backgroundColor: backgroundColor,
+      gradientColors: gradientColors,
+      textColor: textColor,
     );
   }
 
-  Widget _buildNotificationSettings() {
+  Widget _buildNotificationSettings(Color primaryColor, Color backgroundColor, Color textColor, Color secondaryTextColor, List<Color> gradientColors) {
     return _buildSettingsSection(
       'Notifications',
       [
         _buildSettingsTile(
           icon: Icons.notifications,
           title: 'Enable Notifications',
-          trailing: Switch(
-            value: isNotificationsEnabled,
-            onChanged: (value) {
-              setState(() {
-                isNotificationsEnabled = value;
-              });
-            },
-            activeColor: Color.fromARGB(255, 187, 134, 252),
+          trailing: Consumer<PreferencesProvider>(
+            builder: (context, preferencesProvider, child) {
+              return Switch(
+                value: preferencesProvider.notificationsEnabled,
+                onChanged: (value) {
+                  preferencesProvider.setNotificationsEnabled(value);
+                },
+                activeColor: primaryColor,
+              );
+            }
           ),
+          textColor: textColor,
+          secondaryTextColor: secondaryTextColor,
         ),
         _buildSettingsTile(
           icon: Icons.access_time,
           title: 'Reminder Time',
-          trailing: Text(
-            notificationTime.format(context),
-            style: GoogleFonts.poppins(
-              color: Colors.white70,
-            ),
+          trailing: Consumer<PreferencesProvider>(
+            builder: (context, preferencesProvider, child) {
+              return Text(
+                preferencesProvider.notificationTime.format(context),
+                style: GoogleFonts.poppins(
+                  color: secondaryTextColor,
+                ),
+              );
+            }
           ),
           onTap: () async {
             final TimeOfDay? picked = await showTimePicker(
               context: context,
-              initialTime: notificationTime,
+              initialTime: Provider.of<PreferencesProvider>(context, listen: false).notificationTime,
               builder: (context, child) {
                 return Theme(
                   data: Theme.of(context).copyWith(
-                    colorScheme: ColorScheme.dark(
-                      primary: Color.fromARGB(255, 187, 134, 252),
-                      surface: Color(0xFF2A2A2A),
+                    colorScheme: ColorScheme.light(
+                      primary: primaryColor,
+                      surface: backgroundColor,
                     ),
                   ),
                   child: child!,
@@ -223,34 +223,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             );
             if (picked != null) {
-              setState(() {
-                notificationTime = picked;
-              });
+              Provider.of<PreferencesProvider>(context, listen: false).setNotificationTime(picked);
             }
           },
+          textColor: textColor,
+          secondaryTextColor: secondaryTextColor,
         ),
       ],
+      primaryColor: primaryColor,
+      backgroundColor: backgroundColor,
+      gradientColors: gradientColors,
+      textColor: textColor,
     );
   }
 
-  Widget _buildDataSettings() {
+  Widget _buildDataSettings(Color primaryColor, Color backgroundColor, Color textColor, Color secondaryTextColor, List<Color> gradientColors) {
     return _buildSettingsSection(
-      'Data Management',
+      'Account Management',
       [
-        _buildSettingsTile(
-          icon: Icons.backup,
-          title: 'Backup Data',
-          onTap: () {
-            // Implement backup functionality
-          },
-        ),
-        _buildSettingsTile(
-          icon: Icons.restore,
-          title: 'Restore Data',
-          onTap: () {
-            // Implement restore functionality
-          },
-        ),
         _buildSettingsTile(
           icon: Icons.delete_forever,
           title: 'Clear All Data',
@@ -258,12 +248,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onTap: () {
             _showDeleteConfirmationDialog();
           },
+          textColor: textColor,
+          secondaryTextColor: secondaryTextColor,
+        ),
+        _buildSettingsTile(
+          icon: Icons.logout,
+          title: 'Log Out',
+          titleColor: Colors.red,
+          onTap: () {
+            // Implement logout functionality
+          },
+          textColor: textColor,
+          secondaryTextColor: secondaryTextColor,
         ),
       ],
+      primaryColor: primaryColor,
+      backgroundColor: backgroundColor,
+      gradientColors: gradientColors,
+      textColor: textColor,
     );
   }
 
-  Widget _buildSettingsSection(String title, List<Widget> children) {
+
+  Widget _buildSettingsSection(String title, List<Widget> children, {
+    required Color primaryColor,
+    required Color backgroundColor,
+    required List<Color> gradientColors,
+    required Color textColor,
+  }) {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
@@ -274,7 +286,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Text(
               title,
               style: GoogleFonts.poppins(
-                color: Color.fromARGB(255, 187, 134, 252),
+                color: primaryColor,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
@@ -285,10 +297,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF2A2A2A),
-                  Color(0xFF1F1F1F),
-                ],
+                colors: gradientColors,
               ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
@@ -312,6 +321,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Widget? trailing,
     Color? titleColor,
     VoidCallback? onTap,
+    required Color textColor,
+    required Color secondaryTextColor,
   }) {
     return Material(
       color: Colors.transparent,
@@ -324,7 +335,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Icon(
                 icon,
-                color: titleColor ?? Colors.white70,
+                color: titleColor ?? secondaryTextColor,
                 size: 24,
               ),
               SizedBox(width: 16),
@@ -332,7 +343,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Text(
                   title,
                   style: GoogleFonts.poppins(
-                    color: titleColor ?? Colors.white,
+                    color: titleColor ?? textColor,
                     fontSize: 16,
                   ),
                 ),
@@ -346,11 +357,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _showDeleteConfirmationDialog() async {
+    final isDarkMode = Provider.of<PreferencesProvider>(context, listen: false).isDarkMode;
+    final backgroundColor = isDarkMode ? Color(0xFF2A2A2A) : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final secondaryTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+
     return showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: Color(0xFF2A2A2A),
+          backgroundColor: backgroundColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(
@@ -369,7 +385,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Text(
                 'Clear All Data',
                 style: GoogleFonts.poppins(
-                  color: Colors.white,
+                  color: textColor,
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                 ),
@@ -379,7 +395,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           content: Text(
             'This action will permanently delete all your habits and progress. This cannot be undone.',
             style: GoogleFonts.poppins(
-              color: Colors.white70,
+              color: secondaryTextColor,
               fontSize: 16,
               height: 1.5,
             ),
@@ -389,7 +405,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Text(
                 'Cancel',
                 style: GoogleFonts.poppins(
-                  color: Colors.white70,
+                  color: secondaryTextColor,
                 ),
               ),
               onPressed: () => Navigator.of(context).pop(),
@@ -424,11 +440,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     TextEditingController controller,
     IconData icon,
   ) async {
+    final isDarkMode = Provider.of<PreferencesProvider>(context, listen: false).isDarkMode;
+    final primaryColor = isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue;
+    final backgroundColor = isDarkMode ? Color(0xFF2A2A2A) : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final secondaryTextColor = isDarkMode ? Colors.white54 : Colors.black54;
+
     return showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: Color(0xFF2A2A2A),
+          backgroundColor: backgroundColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -436,14 +458,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Icon(
                 icon,
-                color: Color.fromARGB(255, 187, 134, 252),
+                color: primaryColor,
                 size: 28,
               ),
               SizedBox(width: 12),
               Text(
                 title,
                 style: GoogleFonts.poppins(
-                  color: Colors.white,
+                  color: textColor,
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                 ),
@@ -452,16 +474,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           content: TextField(
             controller: controller,
-            style: GoogleFonts.poppins(color: Colors.white),
+            style: GoogleFonts.poppins(color: textColor),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: GoogleFonts.poppins(color: Colors.white54),
+              hintStyle: GoogleFonts.poppins(color: secondaryTextColor),
               enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.white24),
+                borderSide: BorderSide(color: secondaryTextColor),
               ),
               focusedBorder: UnderlineInputBorder(
                 borderSide: BorderSide(
-                  color: Color.fromARGB(255, 187, 134, 252),
+                  color: primaryColor,
                 ),
               ),
             ),
@@ -470,13 +492,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             TextButton(
               child: Text(
                 'Cancel',
-                style: GoogleFonts.poppins(color: Colors.white70),
+                style: GoogleFonts.poppins(color: secondaryTextColor),
               ),
               onPressed: () => Navigator.of(context).pop(),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color.fromARGB(255, 187, 134, 252),
+                backgroundColor: primaryColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -497,11 +519,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _showChangePasswordDialog() async {
+    final isDarkMode = Provider.of<PreferencesProvider>(context, listen: false).isDarkMode;
+    final primaryColor = isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue;
+    final backgroundColor = isDarkMode ? Color(0xFF2A2A2A) : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final secondaryTextColor = isDarkMode ? Colors.white54 : Colors.black54;
+
     return showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: Color(0xFF2A2A2A),
+          backgroundColor: backgroundColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -509,14 +537,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Icon(
                 Icons.lock,
-                color: Color.fromARGB(255, 187, 134, 252),
+                color: primaryColor,
                 size: 28,
               ),
               SizedBox(width: 12),
               Text(
                 'Change Password',
                 style: GoogleFonts.poppins(
-                  color: Colors.white,
+                  color: textColor,
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                 ),
@@ -525,16 +553,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           content: TextField(
             controller: _nameController,
-            style: GoogleFonts.poppins(color: Colors.white),
+            style: GoogleFonts.poppins(color: textColor),
             decoration: InputDecoration(
               hintText: 'Enter your current password',
-              hintStyle: GoogleFonts.poppins(color: Colors.white54),
+              hintStyle: GoogleFonts.poppins(color: secondaryTextColor),
               enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.white24),
+                borderSide: BorderSide(color: secondaryTextColor),
               ),
               focusedBorder: UnderlineInputBorder(
                 borderSide: BorderSide(
-                  color: Color.fromARGB(255, 187, 134, 252),
+                  color: primaryColor,
                 ),
               ),
             ),
@@ -543,13 +571,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             TextButton(
               child: Text(
                 'Cancel',
-                style: GoogleFonts.poppins(color: Colors.white70),
+                style: GoogleFonts.poppins(color: secondaryTextColor),
               ),
               onPressed: () => Navigator.of(context).pop(),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color.fromARGB(255, 187, 134, 252),
+                backgroundColor: primaryColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),

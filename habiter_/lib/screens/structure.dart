@@ -1,10 +1,11 @@
 import 'dart:math';
 
 import 'package:flutter_svg/svg.dart';
+import 'package:habiter_/providers/preferences_service.dart';
 import 'package:habiter_/screens/analytics.dart';
-import 'package:habiter_/screens/home/add.dart';
-import 'package:habiter_/screens/home/home.dart';
-import 'package:habiter_/screens/settingsRel/settings.dart';
+import 'package:habiter_/screens/additional/add.dart';
+import 'package:habiter_/screens/home.dart';
+import 'package:habiter_/screens/settings.dart';
 import 'package:habiter_/screens/streak.dart';
 import 'package:intl/intl.dart';
 
@@ -38,9 +39,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
     return Consumer<HabitProvider>(
       builder: (context, habitProvider, child) => Scaffold(
-        backgroundColor: Color(0xFF1E1E1E),
+        backgroundColor: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
         body: IndexedStack(
           index: _selectedIndex,
           children: _pages,
@@ -53,9 +55,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBottomNavBar() {
+    final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
     return Container(
       decoration: BoxDecoration(
-        color: Color(0xFF2A2A2A),
+        color: isDarkMode ? Color(0xFF2A2A2A) : Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
@@ -108,12 +111,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       AnimatedSwitcher(
                         duration: Duration(milliseconds: 200),
-                        child: _buildNavBarItem(Icons.bar_chart_rounded, 3),
+                        child: _buildNavBarItem(Icons.bar_chart_rounded, 2),
                       ),
                       SizedBox(width: 15),
                       AnimatedSwitcher(
                         duration: Duration(milliseconds: 200),
-                        child: _buildNavBarItem(Icons.person_rounded, 4),
+                        child: _buildNavBarItem(Icons.person_rounded, 3),
                       ),
                     ],
                   ),
@@ -128,6 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildNavBarItem(IconData icon, int index) {
     final isSelected = _selectedIndex == index;
+    final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
     return TweenAnimationBuilder(
       duration: Duration(milliseconds: 500),
       tween: Tween<double>(begin: 0, end: isSelected ? 1.0 : 0.0),
@@ -139,12 +143,19 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               gradient: LinearGradient(
-                colors: [
+                colors: isDarkMode ? [
                   isSelected 
                     ? Color(0xFF9C27B0).withOpacity(0.8 * value)
                     : Colors.transparent,
                   isSelected
                     ? Color(0xFF7B1FA2).withOpacity(0.9 * value) 
+                    : Colors.transparent,
+                ] : [
+                  isSelected 
+                    ? Color(0xFF2196F3).withOpacity(0.8 * value)
+                    : Colors.transparent,
+                  isSelected
+                    ? Color(0xFF1976D2).withOpacity(0.9 * value) 
                     : Colors.transparent,
                 ],
                 begin: Alignment.topLeft,
@@ -153,7 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
               boxShadow: [
                 if (isSelected)
                   BoxShadow(
-                    color: Color(0xFF9C27B0).withOpacity(0.3 * value),
+                    color: (isDarkMode ? Color(0xFF9C27B0) : Color(0xFF2196F3)).withOpacity(0.3 * value),
                     blurRadius: 8 * value,
                     offset: Offset(0, 2 * value),
                   )
@@ -174,8 +185,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     isSelected ? value : 0
                   ),
                   onPressed: () => _onItemTapped(index),
-                  splashColor: Colors.purple.withOpacity(0.3),
-                  highlightColor: Colors.purple.withOpacity(0.2),
+                  splashColor: (isDarkMode ? Colors.purple : Colors.blue).withOpacity(0.3),
+                  highlightColor: (isDarkMode ? Colors.purple : Colors.blue).withOpacity(0.2),
                 ),
               ),
             ),
@@ -186,6 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFloatingActionButton() {
+    final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
     return Stack(
       children: [
         // FAB Socket/Background
@@ -220,14 +232,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
+                  colors: isDarkMode ? [
                     Color(0xFF9C27B0),
                     Color(0xFF7B1FA2),
+                  ] : [
+                    Color(0xFF2196F3),
+                    Color(0xFF1976D2),
                   ],
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Color(0xFF9C27B0).withOpacity(0.3),
+                    color: (isDarkMode ? Color(0xFF9C27B0) : Color(0xFF2196F3)).withOpacity(0.3),
                     blurRadius: 8,
                     offset: Offset(0, 2),
                   ),
