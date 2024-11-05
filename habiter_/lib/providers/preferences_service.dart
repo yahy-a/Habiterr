@@ -61,4 +61,7 @@ class PreferencesProvider with ChangeNotifier {
     await _prefs.setInt(notificationMinuteKey, time.minute);
     notifyListeners();
   }
+  Future<void> setNotification(int id, String title, String body) async{
+    await scheduleNotification( id, title, body, _notificationTime);
+  }
 } 
