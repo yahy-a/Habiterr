@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:habiter_/firebase%20services/firebase_auth.dart';
 import 'package:habiter_/providers/habit_provider.dart';
+import 'package:habiter_/providers/notification_service.dart';
 import 'package:habiter_/providers/preferences_service.dart';
 import 'package:habiter_/screens/signIn/change.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +14,8 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+
+  final NotificationService _notificationService = NotificationService();
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -188,8 +191,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             builder: (context, preferencesProvider, child) {
               return Switch(
                 value: preferencesProvider.notificationsEnabled,
-                onChanged: (value) {
+                onChanged: (value) async {
                   preferencesProvider.setNotificationsEnabled(value);
+                  if(value){
+                    bool isCompleted =  await preferencesProvider.setNotification( 1, "habit Reminder",'Don’t forget to check your habits!');
+                    if(isCompleted){
+                      print('succesfull');
+                    }
+                  }
+                  else {
+                    bool isCOmpleted = await preferencesProvider.cancelNotification(1);
+                    if(isCOmpleted){
+                      print('succesfull cancelling');
+                    }
+                  }
                 },
                 activeColor: primaryColor,
               );
@@ -228,7 +243,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             );
             if (picked != null) {
-              Provider.of<PreferencesProvider>(context, listen: false).setNotificationTime(picked);
+              await Provider.of<PreferencesProvider>(context, listen: false).setNotificationTime(picked);
+              bool isEnabled = Provider.of<PreferencesProvider>(context,listen: false).isDarkMode;
+              if(isEnabled){
+                bool isCompleted = await Provider.of<PreferencesProvider>(context,listen: false).setNotification(1, "habit Reminder", 'Don’t forget to check your habits!');
+                if(isCompleted){
+                  print('succesful');
+                }
+              }
             }
           },
           textColor: textColor,

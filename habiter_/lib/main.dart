@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:habiter_/providers/habit_provider.dart';
+import 'package:habiter_/providers/notification_service.dart';
 import 'package:habiter_/providers/preferences_service.dart';
 import 'package:habiter_/screens/starting/splash.dart';
 import 'package:provider/provider.dart';
@@ -9,6 +10,9 @@ void main() async{
   WidgetsFlutterBinding.ensureInitialized();
   final preferencesProvider = PreferencesProvider();
   await preferencesProvider.init();
+  final NotificationService notificationService = NotificationService();
+  // Initialize notifications
+  await notificationService.initNotification();
   await Firebase.initializeApp();
   runApp(
     MultiProvider(

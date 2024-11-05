@@ -324,7 +324,6 @@ class HabitProvider with ChangeNotifier {
     await _firebaseService.logOut(context);
     notifyListeners();
   }
-
   @override
   // ignore: unnecessary_overrides
   void dispose() {
