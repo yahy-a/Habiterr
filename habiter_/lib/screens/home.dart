@@ -621,11 +621,7 @@ class _HomeContState extends State<HomeCont> {
           habitProvider.selectedDate.month == DateTime.now().month &&
           habitProvider.selectedDate.year == DateTime.now().year;
       bool isCompleted;
-      if(isToday){
-        isCompleted = habitProvider.isHabitCompleted(habit.id!, habitProvider.selectedDate);
-      }else{
-        isCompleted = habit.isCompletedForDate(habitProvider.selectedDate);
-      }
+        isCompleted = habitProvider.getCompletionStatus(habit.id!);
       return Dismissible(
         key: Key(habit.id!),
         direction: DismissDirection.endToStart,

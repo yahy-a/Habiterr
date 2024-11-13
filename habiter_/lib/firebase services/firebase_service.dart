@@ -5,6 +5,8 @@ import 'package:habiter_/models/habit.dart';
 import 'package:habiter_/screens/signIn/login.dart';
 import 'package:path/path.dart';
 
+
+
 /// FirebaseService handles all interactions with Firebase for habit tracking.
 /// It manages habits and their entries in Firestore, including creation,
 /// retrieval, and updates.
@@ -62,7 +64,6 @@ class FirebaseService {
         'numberOfDays': numberOfDays,
         'createdAt': FieldValue.serverTimestamp(),
       });
-      print('Document added with ID: ${habitDoc.id}'); // Add this
 
       await addEntries(
           habitId: habitDoc.id,
@@ -97,8 +98,9 @@ class FirebaseService {
           break;
 
         case 'weekly':
-          if (selectedWeekDay == null)
+          if (selectedWeekDay == null) {
             throw ArgumentError('Weekly frequency requires a day selection');
+          }
           final daysUntilWeekDay = (selectedWeekDay - now.weekday + 7) % 7;
           final nextWeekDay = now.add(Duration(days: daysUntilWeekDay));
 
@@ -119,8 +121,9 @@ class FirebaseService {
           break;
 
         case 'monthly':
-          if (selectedMonthDay == null)
+          if (selectedMonthDay == null) {
             throw ArgumentError('Monthly frequency requires a day selection');
+          }
           for (int i = 0; i < numberOfDays; i++) {
             final date = DateTime(now.year, now.month + i, selectedMonthDay);
             _addEntryToBatch(batch, habitId, date);
@@ -153,12 +156,10 @@ class FirebaseService {
   /// @param date The date for which to retrieve habits
   /// @return A stream of List<Habit> for the specified date
   Stream<List<Habit>> getHabitsForDate(DateTime date) {
-    print('getHabitsForDate called with date: ${date.toString()}');
 
     final startOfDay = DateTime(date.year, date.month, date.day);
     final endOfDay = startOfDay.add(Duration(days: 1));
 
-    print('Querying for dates between: ${startOfDay} and ${endOfDay}');
 
     return _habits
         .where('userId', isEqualTo: currentUserId)
@@ -177,8 +178,7 @@ class FirebaseService {
               .where('date', isLessThan: Timestamp.fromDate(endOfDay))
               .get();
 
-          print(
-              'Found ${entryRef.docs.length} entries for ${habit.name} on ${startOfDay}');
+
 
           if (entryRef.docs.isNotEmpty) {
             // Create a map of entries
@@ -189,13 +189,10 @@ class FirebaseService {
                   DateTime(entry.date.year, entry.date.month, entry.date.day)
                       .toString();
               entries[dateKey] = entry;
-              print(
-                  'Added entry for ${habit.name} on $dateKey with completion status: ${entry.isCompleted}');
             }
 
             // Create new habit instance with entries
             habits.add(habit.copyWithEntries(entries));
-            print('Added habit: ${habit.name} with ${entries.length} entries');
           }
         } catch (e) {
           print('Error processing habit: $e');

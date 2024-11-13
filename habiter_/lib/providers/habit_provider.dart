@@ -13,10 +13,10 @@ class HabitProvider with ChangeNotifier {
   String? get error => _error;
   // Instance of FirebaseService to handle Firebase operations
   final FirebaseService _firebaseService = FirebaseService();
-  
+
   // The currently selected date, initialized to today
   DateTime _selectedDate = DateTime.now();
-  
+
   // List to store habit objects
   final List<Habit> _habits = [];
 
@@ -34,7 +34,6 @@ class HabitProvider with ChangeNotifier {
 
   double _progressValue = 0;
 
-
   // Variables to store the habit details
   int _selectedWeekDay = DateTime.sunday;
   int _selectedMonthDay = 1;
@@ -47,7 +46,7 @@ class HabitProvider with ChangeNotifier {
 
   int get progress => _progress;
   // Getter for progress
-  
+
   double get progressValue => _progressValue;
 
   // Getter for task name
@@ -67,24 +66,30 @@ class HabitProvider with ChangeNotifier {
 
   // Getter for number of days
   int get numberOfDays => _numberOfDays;
-  
+
   // Getter for habits list
   List<Habit> get habits => _habits;
-  
+
   // Getter for selected date
   DateTime get selectedDate => _selectedDate;
 
   final Map<String, bool> _completionCache = {};
-  
+
+  Map<String, bool> get completionCache => _completionCache;
+
+  Future<void> initializeCache() async {
+    List<Habit> habits =
+        await _firebaseService.getHabitsForDate(selectedDate).first;
+    _initializeCache(habits);
+  }
+
   // Add this method to initialize cache from Firestore data
   void _initializeCache(List<Habit> habits) {
     _completionCache.clear();
     for (var habit in habits) {
-    final dateKey = DateTime(
-      _selectedDate.year,
-      _selectedDate.month,
-      _selectedDate.day
-    ).toString();
+      final dateKey =
+          DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day)
+              .toString();
       final cacheKey = '${habit.id}_$dateKey';
       _completionCache[cacheKey] = habit.isCompletedForDate(_selectedDate);
     }
@@ -95,7 +100,8 @@ class HabitProvider with ChangeNotifier {
     if (_progress != progress || _total != total) {
       _progress = progress;
       _total = total;
-      _progressValue = total > 0 ? double.parse((progress / total).toStringAsFixed(2)) : 0.0;
+      _progressValue =
+          total > 0 ? double.parse((progress / total).toStringAsFixed(2)) : 0.0;
       notifyListeners();
     }
   }
@@ -142,17 +148,24 @@ class HabitProvider with ChangeNotifier {
     _selectedDate = date;
     notifyListeners();
   }
-  
+
+  bool getCompletionStatus(String habitId) {
+    final dateKey = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day).toString();
+    final cacheKey = '${habitId}_$dateKey';
+
+    // Return the completion status if it exists, otherwise return false
+    return _completionCache[cacheKey] ?? false;
+  }
+
   /// Provides a stream of habits for the selected date
   Stream<List<Habit>> get habitsStream {
-    return _firebaseService.getHabitsForDate(_selectedDate)
-      .map((habits) {
-        _habits.clear(); // Clear existing habits first
-        _habits.addAll(habits);
-        // Initialize cache for each habit
-        _initializeCache(habits);
-        return habits;
-      });
+    return _firebaseService.getHabitsForDate(_selectedDate).map((habits) {
+      _habits.clear(); // Clear existing habits first
+      _habits.addAll(habits);
+      // Initialize cache for each habit
+      _initializeCache(habits);
+      return habits;
+    });
   }
 
   /// Adds a new habit to Firebase
@@ -165,9 +178,10 @@ class HabitProvider with ChangeNotifier {
       _isLoading = true;
       _error = null;
       notifyListeners();
-      
-      await _firebaseService.addHabit(_taskName, _taskDetails, _numberOfDays, _frequency, _selectedWeekDay, _selectedMonthDay);
-      
+
+      await _firebaseService.addHabit(_taskName, _taskDetails, _numberOfDays,
+          _frequency, _selectedWeekDay, _selectedMonthDay);
+
       // Reset form
       _taskName = '';
       _taskDetails = '';
@@ -186,21 +200,19 @@ class HabitProvider with ChangeNotifier {
   /// @param isCompleted The new completion status
   Future<void> updateHabitCompletion(String habitId, bool isCompleted) async {
     try {
-      final dateKey = DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day
-      ).toString();
+      final dateKey =
+          DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day)
+              .toString();
       final cacheKey = '${habitId}_$dateKey';
-      
+
       // Get previous state
       final wasCompleted = _completionCache[cacheKey] ?? false;
-      
+
       // Only update if state actually changes
       if (wasCompleted != isCompleted) {
         // Update local cache immediately
         _completionCache[cacheKey] = isCompleted;
-        
+
         // Update local progress
         setProgress(_progress, _total); // Update progress immediately
         // Notify listeners immediately for UI update
@@ -208,10 +220,7 @@ class HabitProvider with ChangeNotifier {
 
         // Then update Firebase in background
         await _firebaseService.updateHabitCompletion(
-          habitId, 
-          _selectedDate, 
-          isCompleted
-        );
+            habitId, _selectedDate, isCompleted);
         await _firebaseService.updateHabitStreak(habitId);
         notifyListeners();
         await _firebaseService.updateOverAllStreak();
@@ -220,13 +229,11 @@ class HabitProvider with ChangeNotifier {
       }
     } catch (e) {
       // Revert local changes if Firebase update fails
-      final dateKey = DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day
-      ).toString();
+      final dateKey =
+          DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day)
+              .toString();
       final cacheKey = '${habitId}_$dateKey';
-      
+
       _completionCache[cacheKey] = !isCompleted;
       if (isCompleted) {
         _progress--;
@@ -235,7 +242,7 @@ class HabitProvider with ChangeNotifier {
       }
       _progressValue = _total > 0 ? _progress / _total : 0.0;
       notifyListeners();
-      
+
       print('Error updating habit completion: $e');
       rethrow;
     }
@@ -248,7 +255,7 @@ class HabitProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Gets the overall best streak for all habits 
+  /// Gets the overall best streak for all habits
   Future<int> getOverallBestStreak() async {
     return await _firebaseService.getOverallBestStreak();
   }
@@ -262,7 +269,6 @@ class HabitProvider with ChangeNotifier {
     return await _firebaseService.getHabitBestStreak(habitId);
   }
 
-
   Future<int> getHabitStreak(String habitId) async {
     return await _firebaseService.getHabitStreak(habitId);
   }
@@ -275,7 +281,7 @@ class HabitProvider with ChangeNotifier {
   Future<void> updateOverAllStreak() async {
     await _firebaseService.updateOverAllStreak();
     notifyListeners();
-  } 
+  }
 
   Future<void> updateOverallBestStreak() async {
     await _firebaseService.updateOverallBestStreak();
@@ -285,7 +291,7 @@ class HabitProvider with ChangeNotifier {
   bool isHabitCompleted(String habitId, DateTime date) {
     final dateKey = DateTime(date.year, date.month, date.day).toString();
     final cacheKey = '${habitId}_$dateKey';
-    
+
     // Check cache first
     if (_completionCache.containsKey(cacheKey)) {
       return _completionCache[cacheKey]!;
@@ -293,20 +299,18 @@ class HabitProvider with ChangeNotifier {
 
     // If not in cache, find the habit
     final habit = _habits.firstWhere((h) => h.id == habitId);
-    
+
     // Search through entries to find matching date
     final isCompleted = habit.entries.values.any((entry) {
-      final entryDate = DateTime(
-        entry.date.year,
-        entry.date.month,
-        entry.date.day
-      ).toString();
+      final entryDate =
+          DateTime(entry.date.year, entry.date.month, entry.date.day)
+              .toString();
       return entryDate == dateKey && entry.isCompleted;
     });
 
     // Store in cache
     _completionCache[cacheKey] = isCompleted;
-    
+
     return isCompleted;
   }
 
@@ -324,10 +328,10 @@ class HabitProvider with ChangeNotifier {
     await _firebaseService.logOut(context);
     notifyListeners();
   }
+
   @override
   // ignore: unnecessary_overrides
   void dispose() {
     super.dispose();
   }
-
 }

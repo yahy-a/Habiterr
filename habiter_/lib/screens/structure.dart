@@ -6,7 +6,7 @@ import 'package:habiter_/screens/analytics.dart';
 import 'package:habiter_/screens/additional/add.dart';
 import 'package:habiter_/screens/home.dart';
 import 'package:habiter_/screens/settings.dart';
-import 'package:habiter_/screens/streak.dart';
+import 'package:habiter_/screens/profile.dart';
 import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';
@@ -28,8 +28,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final List<Widget> _pages = [
     const HomeCont(),        // Your current home page content
     const SettingsScreen(),       // Settings page        // Empty container for FAB
-    const AnalyticsScreen(),     // Statistics page
-    const StreakScreen(),        // Profile page
+    const AnalyticsPage(),     // Statistics page
+    const ProfilePage(),        // Profile page
   ];
 
   @override

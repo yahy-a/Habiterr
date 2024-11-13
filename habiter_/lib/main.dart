@@ -4,6 +4,7 @@ import 'package:habiter_/providers/habit_provider.dart';
 import 'package:habiter_/providers/notification_service.dart';
 import 'package:habiter_/providers/preferences_service.dart';
 import 'package:habiter_/screens/starting/splash.dart';
+import 'package:path/path.dart';
 import 'package:provider/provider.dart';
 
 void main() async{
@@ -29,6 +30,8 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
+    final habitProvider = Provider.of<HabitProvider>(context,listen: false);
+    habitProvider.initializeCache();
     return MaterialApp(
       title: 'Habiter',
       debugShowCheckedModeBanner: false,

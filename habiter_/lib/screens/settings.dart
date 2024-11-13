@@ -196,7 +196,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if(value){
                     bool isCompleted =  await preferencesProvider.setNotification( 1, "habit Reminder",'Don’t forget to check your habits!');
                     if(isCompleted){
-                      print('succesfull');
+                      print('succesfully created notification');
+                    }else{
+                      print("cant create a notification");
                     }
                   }
                   else {
@@ -248,8 +250,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               if(isEnabled){
                 bool isCompleted = await Provider.of<PreferencesProvider>(context,listen: false).setNotification(1, "habit Reminder", 'Don’t forget to check your habits!');
                 if(isCompleted){
-                  print('succesful');
-                }
+                  print('succesfully enabled notification');
+                }else{
+                      print("cant create a notification");
+                    }
               }
             }
           },

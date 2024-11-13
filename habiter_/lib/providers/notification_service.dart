@@ -43,11 +43,22 @@ class NotificationService {
       required String body,
       required TimeOfDay scheduledTime}) async {
     final now = DateTime.now();
+    print('Current time: $now');
+
     var scheduledDate = DateTime(
         now.year, now.month, now.day, scheduledTime.hour, scheduledTime.minute);
+    print('Initial scheduled date: $scheduledDate');
+
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
+      print('Scheduled date was in the past, adjusted to: $scheduledDate');
     }
+
+    print('Scheduling notification with ID: $id');
+    print('Notification title: $title');
+    print('Notification body: $body');
+    print('Final scheduled date: $scheduledDate');
+
     await notificationsPlugin.zonedSchedule(
       id,
       title,
@@ -68,10 +79,17 @@ class NotificationService {
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
     );
+
+    print('Notification scheduled successfully with ID: $id');
   }
 
   Future<void> cancelNotification(int id) async {
-    await notificationsPlugin.cancel(id);
+    try {
+      await notificationsPlugin.cancel(id);
+      print('Notification with ID $id has been canceled successfully.');
+    } catch (e) {
+      print('Failed to cancel notification with ID $id: $e');
+    }
   }
 
   // Future<void> updateNotificationTime({
