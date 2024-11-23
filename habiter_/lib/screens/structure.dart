@@ -2,11 +2,11 @@ import 'dart:math';
 
 import 'package:flutter_svg/svg.dart';
 import 'package:habiter_/providers/preferences_service.dart';
-import 'package:habiter_/screens/analytics.dart';
+import 'package:habiter_/screens/mainScreens/analytics.dart';
 import 'package:habiter_/screens/additional/add.dart';
-import 'package:habiter_/screens/home.dart';
-import 'package:habiter_/screens/settings.dart';
-import 'package:habiter_/screens/profile.dart';
+import 'package:habiter_/screens/mainScreens/home.dart';
+import 'package:habiter_/screens/mainScreens/settings.dart';
+import 'package:habiter_/screens/mainScreens/profile.dart';
 import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';

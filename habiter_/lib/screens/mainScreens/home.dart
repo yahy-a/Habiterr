@@ -4,6 +4,7 @@ import 'package:habiter_/models/habit.dart';
 import 'package:habiter_/providers/preferences_service.dart';
 import 'package:intl/intl.dart';
 import 'package:habiter_/providers/habit_provider.dart';
+import 'package:path/path.dart';
 import 'package:provider/provider.dart';
 
 class HomeCont extends StatefulWidget {
@@ -30,7 +31,7 @@ class _HomeContState extends State<HomeCont> {
             ),
             slivers: [
               SliverToBoxAdapter(child: _buildHeader()),
-              SliverToBoxAdapter(child: _buildDatePicker()),
+              SliverToBoxAdapter(child: _buildDatePicker(context)),
               SliverToBoxAdapter(child: _buildStreakInfo()),
               SliverToBoxAdapter(child: _buildProgressCircle()),
               SliverToBoxAdapter(child: _buildHabitList()),
@@ -102,26 +103,23 @@ class _HomeContState extends State<HomeCont> {
                   ),
                 ],
               ),
-              StatefulBuilder(
-                builder: (context, setState) {
-                  return GestureDetector(
-                    onTap: () {
-                      habitProvider.setIsFilled(!habitProvider.isFilled);
-                    },
-                    child: Container(
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: (isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        habitProvider.isFilled ? Icons.notifications : Icons.notifications_outlined,
-                        color: isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue,
-                        size: 28,
-                      ),
-                    ),
-                  );
-                }
+              IconButton(
+                icon: Icon(
+                  Provider.of<PreferencesProvider>(context,listen: true).notificationsEnabled ? Icons.notifications : Icons.notifications_outlined,
+                  color: isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue,
+                  size: 28,
+                ),
+                onPressed: () {
+                  bool isEnabled = Provider.of<PreferencesProvider>(context).notificationsEnabled;
+                  Provider.of<PreferencesProvider>(context).setNotificationsEnabled(!isEnabled);
+                },
+                style: IconButton.styleFrom(
+                  padding: EdgeInsets.all(8),
+                  backgroundColor: (isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue).withOpacity(0.2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
             ],
           ),
@@ -130,7 +128,7 @@ class _HomeContState extends State<HomeCont> {
     );
   }
 
-  Widget _buildDatePicker() {
+  Widget _buildDatePicker(BuildContext context) {
     final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
     return Container(
       height: 80,

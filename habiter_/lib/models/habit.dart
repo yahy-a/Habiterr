@@ -12,6 +12,7 @@ class Habit {
   final int? currentStreak;  // Current streak for the habit
   final DateTime createdAt;  // When the habit was created
   final Map<String, HabitEntry> entries;  // Map of habit entries, keyed by some identifier (possibly date)
+  
 
   // Constructor for Habit
   Habit({

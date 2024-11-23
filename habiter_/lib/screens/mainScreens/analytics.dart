@@ -5,7 +5,6 @@ import 'package:habiter_/providers/preferences_service.dart';
 import 'package:habiter_/providers/habit_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
 
 class AnalyticsPage extends StatefulWidget {
   const AnalyticsPage({super.key});
@@ -15,7 +14,7 @@ class AnalyticsPage extends StatefulWidget {
 }
 
 class _AnalyticsPageState extends State<AnalyticsPage> {
-  String selectedTimeframe = 'Week';
+
   int selectedChartIndex = 0;
 
   @override
@@ -52,13 +51,15 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: isDarkMode ? [
-                Color(0xFF2A2A2A),
-                Color(0xFF1F1F1F),
-              ] : [
-                Colors.white,
-                Colors.grey[100]!,
-              ],
+              colors: isDarkMode
+                  ? [
+                      Color(0xFF2A2A2A),
+                      Color(0xFF1F1F1F),
+                    ]
+                  : [
+                      Colors.white,
+                      Colors.grey[100]!,
+                    ],
             ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
@@ -83,12 +84,17 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               Container(
                 padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: (isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue).withOpacity(0.2),
+                  color: (isDarkMode
+                          ? Color.fromARGB(255, 187, 134, 252)
+                          : Colors.blue)
+                      .withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.analytics_rounded,
-                  color: isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue,
+                  color: isDarkMode
+                      ? Color.fromARGB(255, 187, 134, 252)
+                      : Colors.blue,
                   size: 28,
                 ),
               ),
@@ -103,17 +109,18 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return Consumer<HabitProvider>(
       builder: (context, habitProvider, child) {
         final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
+        final selectedTimeframe = habitProvider.selectedTimeframe;
         return Container(
           height: 60,
           margin: EdgeInsets.symmetric(vertical: 8),
           child: ListView(
             scrollDirection: Axis.horizontal,
-            children: ['Week', 'Month', '3 Months', 'Year'].map((timeframe) {
+            children: ['Week', 'Month', '6 Months', 'Year'].map((timeframe) {
               bool isSelected = selectedTimeframe == timeframe;
               return GestureDetector(
-                onTap: () => setState(() => selectedTimeframe = timeframe),
+                onTap: () => habitProvider.setSelectedTimeframe(timeframe),
                 child: Container(
-                  margin: EdgeInsets.symmetric(horizontal: 5,vertical: 5),
+                  margin: EdgeInsets.symmetric(horizontal: 5, vertical: 5),
                   padding: EdgeInsets.symmetric(horizontal: 20),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -125,12 +132,16 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                               : [Colors.blue, Colors.blue[700]!]
                           : isDarkMode
                               ? [Color(0xFF2A2A2A), Color(0xFF1F1F1F)]
-                              : [const Color.fromARGB(255, 239, 237, 237), Colors.grey[100]!,Colors.grey[300]!],
+                              : [
+                                  const Color.fromARGB(255, 239, 237, 237),
+                                  Colors.grey[100]!,
+                                  Colors.grey[300]!
+                                ],
                     ),
                     borderRadius: BorderRadius.circular(25),
                     boxShadow: [
                       BoxShadow(
-                        color: isDarkMode? Colors.black26: Colors.white,
+                        color: isDarkMode ? Colors.black26 : Colors.white,
                         blurRadius: 4,
                         offset: Offset(0, 2),
                       ),
@@ -146,7 +157,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                                 ? Colors.white70
                                 : Colors.black87,
                         fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.w500,
                       ),
                     ),
                   ),
@@ -164,71 +176,102 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       builder: (context, habitProvider, child) {
         final isDarkMode = Provider.of<PreferencesProvider>(context).isDarkMode;
         return Container(
-          height: 300,
+          height: 400,
           margin: EdgeInsets.all(16),
           padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: isDarkMode ? [
-                Color(0xFF2A2A2A),
-                Color(0xFF1F1F1F),
-              ] : [
-                Colors.white,
-                Colors.grey[100]!,
-              ],
+              colors: isDarkMode
+                  ? [
+                      Color(0xFF2A2A2A),
+                      Color(0xFF1F1F1F),
+                    ]
+                  : [
+                      Colors.white,
+                      Colors.grey[100]!,
+                    ],
             ),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black26,
-                blurRadius: 10,
-                offset: Offset(0, 4),
+                color: isDarkMode ? Colors.black38 : Colors.black12,
+                blurRadius: 20,
+                offset: Offset(0, 10),
               ),
             ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Completion Rate',
-                style: GoogleFonts.poppins(
-                  color: isDarkMode ? Colors.white : Colors.black,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Completion Rate',
+                    style: GoogleFonts.poppins(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Icon(
+                    Icons.auto_graph,
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                ],
               ),
-              SizedBox(height: 20),
+              SizedBox(height: 24),
               Expanded(
                 child: LineChart(
                   LineChartData(
-                    gridData: FlGridData(show: false),
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: 20,
+                      getDrawingHorizontalLine: (value) {
+                        return FlLine(
+                          color: isDarkMode ? Colors.white10 : Colors.black12,
+                          strokeWidth: 1,
+                        );
+                      },
+                    ),
                     titlesData: FlTitlesData(
                       leftTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
                           getTitlesWidget: (value, meta) {
-                            return Text(
-                              '${value.toInt()}%',
-                              style: GoogleFonts.poppins(
-                                color: isDarkMode ? Colors.white70 : Colors.black54,
-                                fontSize: 12,
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Text(
+                                '${value.toInt()}%',
+                                style: GoogleFonts.poppins(
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                  fontSize: 12,
+                                ),
                               ),
                             );
                           },
-                          reservedSize: 40,
+                          reservedSize: 45,
                         ),
                       ),
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
                           getTitlesWidget: (value, meta) {
-                            return Text(
-                              ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][value.toInt()],
-                              style: GoogleFonts.poppins(
-                                color: isDarkMode ? Colors.white70 : Colors.black54,
-                                fontSize: 12,
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][value.toInt()],
+                                style: GoogleFonts.poppins(
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                  fontSize: 12,
+                                ),
                               ),
                             );
                           },
@@ -245,25 +288,112 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     lineBarsData: [
                       LineChartBarData(
                         spots: [
-                          FlSpot(0, 65),
+                          FlSpot(0, 30),
                           FlSpot(1, 70),
-                          FlSpot(2, 85),
-                          FlSpot(3, 75),
-                          FlSpot(4, 80),
-                          FlSpot(5, 90),
-                          FlSpot(6, 85),
+                          FlSpot(2, 83),
+                          FlSpot(3, 76),
+                          FlSpot(4, 82),
+                          FlSpot(5, 88),
+                          FlSpot(6, 80),
                         ],
                         isCurved: true,
-                        color: isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue,
+                        color: isDarkMode
+                            ? Color.fromARGB(255, 187, 134, 252)
+                            : Colors.blue,
                         barWidth: 3,
                         isStrokeCapRound: true,
-                        dotData: FlDotData(show: false),
+                        dotData: FlDotData(
+                          show: true,
+                          getDotPainter: (spot, percent, barData, index) {
+                            return FlDotCirclePainter(
+                              radius: 2,
+                              color: isDarkMode ? Colors.white : Colors.blue,
+                              strokeWidth: 3,
+                              strokeColor: isDarkMode
+                                  ? Color.fromARGB(255, 187, 134, 252)
+                                  : Colors.blue,
+                            );
+                          },
+                        ),
                         belowBarData: BarAreaData(
                           show: true,
-                          color: (isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue).withOpacity(0.1),
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              (isDarkMode
+                                      ? Color.fromARGB(255, 187, 134, 252)
+                                      : Colors.blue)
+                                  .withOpacity(0.3),
+                              (isDarkMode
+                                      ? Color.fromARGB(255, 187, 134, 252)
+                                      : Colors.blue)
+                                  .withOpacity(0.0),
+                            ],
+                          ),
                         ),
                       ),
                     ],
+                    lineTouchData: LineTouchData(
+                      enabled: true,
+                      touchTooltipData: LineTouchTooltipData(
+                        tooltipBgColor: isDarkMode 
+                            ? Color.fromARGB(255, 187, 134, 252).withOpacity(0.8)
+                            : Colors.blue.withOpacity(0.8),
+                        tooltipRoundedRadius: 8,
+                        tooltipPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        tooltipMargin: 16,
+                        getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                          return touchedSpots.map((LineBarSpot touchedSpot) {
+                            return LineTooltipItem(
+                              '${touchedSpot.y.toStringAsFixed(0)}% \n',
+                              TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][touchedSpot.x.toInt()],
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList();
+                        },
+                      ),
+                      touchSpotThreshold: 10,
+                      getTouchLineStart: (data, index) => 0,
+                      getTouchedSpotIndicator: (LineChartBarData barData, List<int> spotIndexes) {
+                        return spotIndexes.map((spotIndex) {
+                          return TouchedSpotIndicatorData(
+                            FlLine(
+                              color: isDarkMode 
+                                  ? Color.fromARGB(255, 187, 134, 252)
+                                  : Colors.blue,
+                              strokeWidth: 2,
+                              dashArray: [5, 5],
+                            ),
+                            FlDotData(
+                              getDotPainter: (spot, percent, barData, index) {
+                                return FlDotCirclePainter(
+                                  radius: 6,
+                                  color: Colors.white,
+                                  strokeWidth: 3,
+                                  strokeColor: isDarkMode 
+                                      ? Color.fromARGB(255, 187, 134, 252)
+                                      : Colors.blue,
+                                );
+                              },
+                            ),
+                          );
+                        }).toList();
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -302,7 +432,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, bool isDarkMode) {
+  Widget _buildStatCard(
+      String title, String value, IconData icon, bool isDarkMode) {
     return Expanded(
       child: Container(
         padding: EdgeInsets.all(16),
@@ -310,13 +441,15 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: isDarkMode ? [
-              Color(0xFF2A2A2A),
-              Color(0xFF1F1F1F),
-            ] : [
-              Colors.white,
-              Colors.grey[100]!,
-            ],
+            colors: isDarkMode
+                ? [
+                    Color(0xFF2A2A2A),
+                    Color(0xFF1F1F1F),
+                  ]
+                : [
+                    Colors.white,
+                    Colors.grey[100]!,
+                  ],
           ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
@@ -332,7 +465,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           children: [
             Icon(
               icon,
-              color: isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue,
+              color:
+                  isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue,
               size: 24,
             ),
             SizedBox(height: 12),
@@ -368,13 +502,15 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: isDarkMode ? [
-                Color(0xFF2A2A2A),
-                Color(0xFF1F1F1F),
-              ] : [
-                Colors.white,
-                Colors.grey[100]!,
-              ],
+              colors: isDarkMode
+                  ? [
+                      Color(0xFF2A2A2A),
+                      Color(0xFF1F1F1F),
+                    ]
+                  : [
+                      Colors.white,
+                      Colors.grey[100]!,
+                    ],
             ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
@@ -428,13 +564,18 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: (isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue).withOpacity(0.2),
+              color: (isDarkMode
+                      ? Color.fromARGB(255, 187, 134, 252)
+                      : Colors.blue)
+                  .withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               completion,
               style: GoogleFonts.poppins(
-                color: isDarkMode ? Color.fromARGB(255, 187, 134, 252) : Colors.blue,
+                color: isDarkMode
+                    ? Color.fromARGB(255, 187, 134, 252)
+                    : Colors.blue,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -457,13 +598,15 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: isDarkMode ? [
-                Color(0xFF2A2A2A),
-                Color(0xFF1F1F1F),
-              ] : [
-                Colors.white,
-                Colors.grey[100]!,
-              ],
+              colors: isDarkMode
+                  ? [
+                      Color(0xFF2A2A2A),
+                      Color(0xFF1F1F1F),
+                    ]
+                  : [
+                      Colors.white,
+                      Colors.grey[100]!,
+                    ],
             ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
@@ -498,7 +641,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                             return Text(
                               '${value.toInt()}%',
                               style: GoogleFonts.poppins(
-                                color: isDarkMode ? Colors.white70 : Colors.black54,
+                                color: isDarkMode
+                                    ? Colors.white70
+                                    : Colors.black54,
                                 fontSize: 12,
                               ),
                             );
@@ -510,12 +655,21 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                         sideTitles: SideTitles(
                           showTitles: true,
                           getTitlesWidget: (value, meta) {
-                            List<String> months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+                            List<String> months = [
+                              'Jan',
+                              'Feb',
+                              'Mar',
+                              'Apr',
+                              'May',
+                              'Jun'
+                            ];
                             if (value.toInt() < months.length) {
                               return Text(
                                 months[value.toInt()],
                                 style: GoogleFonts.poppins(
-                                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : Colors.black54,
                                   fontSize: 12,
                                 ),
                               );

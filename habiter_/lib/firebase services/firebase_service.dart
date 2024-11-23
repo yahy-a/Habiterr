@@ -3,48 +3,52 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:habiter_/models/habit.dart';
 import 'package:habiter_/screens/signIn/login.dart';
-import 'package:path/path.dart';
 
-
-
-/// FirebaseService handles all interactions with Firebase for habit tracking.
-/// It manages habits and their entries in Firestore, including creation,
-/// retrieval, and updates.
+/// FirebaseService handles all Firebase interactions for the habit tracking application.
+/// This service manages authentication, Firestore operations, and provides methods
+/// for CRUD operations on habits, entries, and streak tracking.
 class FirebaseService {
-  // Initialize Firestore and Auth instances for database operations and user authentication
+  // SECTION: Core Firebase Instances
+  /// Main Firestore database instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  /// Firebase Authentication instance
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  /// Reference to the 'habits' collection in Firestore.
-  /// This collection stores all habits for all users.
+  // SECTION: Collection References
+  /// Reference to the habits collection in Firestore
   CollectionReference get _habits => _firestore.collection('habits');
 
+  /// Reference to track overall streaks across all habits
   CollectionReference get _overallStreaks =>
       _firestore.collection('overallStreaks');
 
+  /// Reference to track best overall streaks historically
   CollectionReference get _overallBestStreaks =>
       _firestore.collection('overallBestStreaks');
 
-  /// Get a reference to the 'entries' subcollection for a specific habit.
-  /// Each habit has its own 'entries' subcollection to track daily progress.
-  /// @param habitId The unique identifier of the habit
+  /// Gets the entries collection for a specific habit
+  /// @param habitId Unique identifier for the habit
+  /// @return CollectionReference to the entries subcollection
   CollectionReference _entriesCollection(String habitId) =>
       _habits.doc(habitId).collection('entries');
 
-  /// Get the current user's ID.
-  /// This is used to associate habits with the logged-in user.
+  /// Current authenticated user's ID
   String? get currentUserId => _auth.currentUser?.uid;
 
-  /// Adds a new habit to Firestore and creates initial entries if it's a daily habit.
-  /// @param name The name of the habit
+  // SECTION: Habit CRUD Operations
+  /// Creates a new habit with associated entries based on frequency
+  /// @param name Name of the habit
   /// @param detail Additional details about the habit
-  /// @param numberOfDays The duration for which the habit should be tracked
-  /// @param frequency How often the habit should be performed (e.g., 'daily')
+  /// @param numberOfDays Duration for tracking
+  /// @param frequency How often the habit should be performed
+  /// @param selectedWeekDay Day of week for weekly habits
+  /// @param selectedMonthDay Day of month for monthly habits
   Future<void> addHabit(String name, String detail, int numberOfDays,
       String frequency, int? selectedWeekDay, int? selectedMonthDay) async {
     if (currentUserId == null) throw Exception('User not authenticated');
 
-    // Validate inputs
+    // Validate frequency-specific parameters
     if (frequency == 'Weekly' && selectedWeekDay == null) {
       throw ArgumentError('Weekly frequency requires a selected day');
     }
@@ -54,6 +58,7 @@ class FirebaseService {
 
     DocumentReference habitDoc;
     try {
+      // Create the main habit document
       habitDoc = await _habits.add({
         'userId': currentUserId,
         'name': name,
@@ -65,6 +70,7 @@ class FirebaseService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
+      // Create associated entries
       await addEntries(
           habitId: habitDoc.id,
           numberOfDays: numberOfDays,
@@ -78,6 +84,12 @@ class FirebaseService {
     }
   }
 
+  /// Creates entries for a habit based on its frequency
+  /// @param habitId ID of the parent habit
+  /// @param numberOfDays Number of days to create entries for
+  /// @param frequency How often entries should be created
+  /// @param selectedWeekDay Specific day for weekly habits
+  /// @param selectedMonthDay Specific day for monthly habits
   Future<void> addEntries({
     required String habitId,
     required int numberOfDays,
@@ -91,6 +103,7 @@ class FirebaseService {
     try {
       switch (frequency.toLowerCase()) {
         case 'daily':
+          // Create an entry for every day
           for (int i = 0; i < numberOfDays; i++) {
             final date = now.add(Duration(days: i));
             _addEntryToBatch(batch, habitId, date);
@@ -101,9 +114,11 @@ class FirebaseService {
           if (selectedWeekDay == null) {
             throw ArgumentError('Weekly frequency requires a day selection');
           }
+          // Calculate next occurrence of selected weekday
           final daysUntilWeekDay = (selectedWeekDay - now.weekday + 7) % 7;
           final nextWeekDay = now.add(Duration(days: daysUntilWeekDay));
 
+          // Create entries for selected weekday
           for (int i = 0; i < numberOfDays; i++) {
             final date = nextWeekDay.add(Duration(days: 7 * i));
             _addEntryToBatch(batch, habitId, date);
@@ -111,9 +126,9 @@ class FirebaseService {
           break;
 
         case 'weekdays':
+          // Create entries only for Monday through Friday
           for (int i = 0; i < numberOfDays; i++) {
             final date = now.add(Duration(days: i));
-            // Only add entries for Monday (1) through Friday (5)
             if (date.weekday >= 1 && date.weekday <= 5) {
               _addEntryToBatch(batch, habitId, date);
             }
@@ -124,6 +139,7 @@ class FirebaseService {
           if (selectedMonthDay == null) {
             throw ArgumentError('Monthly frequency requires a day selection');
           }
+          // Create entries for selected day of each month
           for (int i = 0; i < numberOfDays; i++) {
             final date = DateTime(now.year, now.month + i, selectedMonthDay);
             _addEntryToBatch(batch, habitId, date);
@@ -136,11 +152,16 @@ class FirebaseService {
 
       await batch.commit();
     } catch (e) {
-      await _habits.doc(habitId).delete(); // Cleanup if entries creation fails
+      // Cleanup if entry creation fails
+      await _habits.doc(habitId).delete();
       throw Exception('Failed to create habit entries: $e');
     }
   }
 
+  /// Helper method to add a single entry to a batch operation
+  /// @param batch Current write batch
+  /// @param habitId ID of the parent habit
+  /// @param date Date for the entry
   void _addEntryToBatch(WriteBatch batch, String habitId, DateTime date) {
     final entryRef = _entriesCollection(habitId).doc();
     batch.set(entryRef, {
@@ -151,15 +172,13 @@ class FirebaseService {
     });
   }
 
-  /// Retrieves a stream of habits for a specific date.
-  /// This method filters habits based on the user and the given date.
-  /// @param date The date for which to retrieve habits
-  /// @return A stream of List<Habit> for the specified date
+  // SECTION: Habit Retrieval
+  /// Provides a stream of habits for a specific date
+  /// @param date Date to retrieve habits for
+  /// @return Stream of habits with their entries
   Stream<List<Habit>> getHabitsForDate(DateTime date) {
-
     final startOfDay = DateTime(date.year, date.month, date.day);
     final endOfDay = startOfDay.add(Duration(days: 1));
-
 
     return _habits
         .where('userId', isEqualTo: currentUserId)
@@ -171,17 +190,15 @@ class FirebaseService {
         try {
           final habit = Habit.fromDocument(doc);
 
-          // Query entries between start and end of day
+          // Query entries for the specific date
           final entryRef = await _entriesCollection(habit.id!)
               .where('date',
                   isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
               .where('date', isLessThan: Timestamp.fromDate(endOfDay))
               .get();
 
-
-
           if (entryRef.docs.isNotEmpty) {
-            // Create a map of entries
+            // Create entries map for the habit
             Map<String, HabitEntry> entries = {};
             for (var entryDoc in entryRef.docs) {
               final entry = HabitEntry.fromDocument(entryDoc);
@@ -191,7 +208,6 @@ class FirebaseService {
               entries[dateKey] = entry;
             }
 
-            // Create new habit instance with entries
             habits.add(habit.copyWithEntries(entries));
           }
         } catch (e) {
@@ -203,11 +219,11 @@ class FirebaseService {
     });
   }
 
-  /// Updates the completion status of a habit for a specific date.
-  /// This method also updates the streak count for the habit.
-  /// @param habitId The unique identifier of the habit
-  /// @param date The date for which to update the completion status
-  /// @param isCompleted Whether the habit was completed on this date
+  // SECTION: Habit Completion Management
+  /// Updates the completion status of a habit entry for a specific date
+  /// @param habitId ID of the habit to update
+  /// @param date Date of the entry to update
+  /// @param isCompleted New completion status
   Future<void> updateHabitCompletion(
       String habitId, DateTime date, bool isCompleted) async {
     try {
@@ -217,6 +233,7 @@ class FirebaseService {
       print(
           'FirebaseService: Updating habit $habitId for date $startOfDay to $isCompleted');
 
+      // Find the entry for the specific date
       final entryQuery = await _entriesCollection(habitId)
           .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
           .where('date', isLessThan: Timestamp.fromDate(endOfDay))
@@ -227,6 +244,7 @@ class FirebaseService {
         return;
       }
 
+      // Update the entry's completion status
       final entryDoc = entryQuery.docs.first;
       print('FirebaseService: Found entry ${entryDoc.id}');
 
@@ -240,81 +258,86 @@ class FirebaseService {
     }
   }
 
-  /// Calculates the current streak for a given habit.
-  /// A streak is defined as the number of consecutive days a habit has been completed.
-  /// @param habitId The unique identifier of the habit
-  /// @return The current streak count
-
+  // SECTION: Streak Management
+  /// Retrieves the current streak for a specific habit
+  /// @param habitId ID of the habit
+  /// @return Current streak count
   Future<int> getHabitStreak(String habitId) async {
     final habitDoc = await _habits.doc(habitId).get();
     final habitData = habitDoc.data() as Map<String, dynamic>;
     return habitData['currentStreak'] ?? 0;
   }
 
+  /// Updates the current streak for a habit based on completed entries
+  /// @param habitId ID of the habit to update
   Future<void> updateHabitStreak(String habitId) async {
     try {
-      final today = DateTime.now();
-      // Retrieve all entries up to today, ordered by date descending
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final endOfDay = startOfDay.add(Duration(days: 1));
+
+      // Get all entries up to today, ordered by date
       final entries = await _entriesCollection(habitId)
-          .where('date', isLessThanOrEqualTo: today)
+          .where('date', isLessThanOrEqualTo: endOfDay)
           .orderBy('date', descending: true)
           .get();
 
       int streak = 0;
-      // Count consecutive completed entries, starting from the most recent
+      // Count consecutive completed entries
       for (var doc in entries.docs) {
         final entryData = doc.data() as Map<String, dynamic>;
         if (entryData['isCompleted'] == true) {
           streak++;
         } else {
-          // Break the loop when we encounter the first non-completed entry
-          break;
+          break; // Break on first incomplete entry
         }
       }
-      // Update the habit's currentStreak property
+
       await _habits.doc(habitId).update({'currentStreak': streak});
     } catch (e) {
-      // ignore: avoid_print
       print('Error fetching habit streak: $e');
     }
   }
 
+  // SECTION: Overall Streak Management
+  /// Gets the current overall streak across all habits
   Future<int> getOverAllStreak() async {
     final overallStreakDoc = await _overallStreaks.doc(currentUserId).get();
     final overallStreakData = overallStreakDoc.data() as Map<String, dynamic>;
     return overallStreakData['overallStreak'] ?? 0;
   }
 
+  /// Updates the overall streak based on all habits' completion
   Future<void> updateOverAllStreak() async {
     try {
       final now = DateTime.now();
       final startOfDay = DateTime(now.year, now.month, now.day);
       final endOfDay = startOfDay.add(Duration(days: 1));
+
+      // Get all habits for current user
       final habits =
           await _habits.where('userId', isEqualTo: currentUserId).get();
 
-      if (habits.docs.isEmpty) {}
+      if (habits.docs.isEmpty) return;
 
-      // Start with oldest possible date as the last break point
       DateTime lastBreakDay = endOfDay;
       bool foundIncomplete = false;
 
       // Check each habit's entries
       for (var habit in habits.docs) {
         final entries = await _entriesCollection(habit.id)
-            .where('date', isLessThanOrEqualTo: startOfDay)
+            .where('date', isLessThanOrEqualTo: endOfDay)
             .orderBy('date', descending: true)
             .get();
 
         if (entries.docs.isNotEmpty) {
-          // Find first incomplete entry for this habit
+          // Find first incomplete entry
           for (var entry in entries.docs) {
             final entryData = entry.data() as Map<String, dynamic>;
             final entryDate = (entryData['date'] as Timestamp).toDate();
 
             if (entryData['isCompleted'] == false) {
               foundIncomplete = true;
-              // Update lastBreakDay if this incomplete entry is more recent
               if (entryDate.isAfter(lastBreakDay)) {
                 lastBreakDay =
                     DateTime(entryDate.year, entryDate.month, entryDate.day);
@@ -323,7 +346,7 @@ class FirebaseService {
             }
           }
 
-          // If no incomplete entries found, use the oldest entry date
+          // Handle case with no incomplete entries
           if (!foundIncomplete && entries.docs.isNotEmpty) {
             final oldestEntry = entries.docs.last;
             final oldestEntryData = oldestEntry.data() as Map<String, dynamic>;
@@ -337,23 +360,25 @@ class FirebaseService {
         }
       }
 
-      // Calculate days since last break
+      // Calculate and update overall streak
       final daysSinceLastBreak = endOfDay.difference(lastBreakDay).inDays;
       await _overallStreaks
           .doc(currentUserId)
           .set({'overallStreak': daysSinceLastBreak});
-      // Return streak only if there are days since last break
     } catch (e) {
       print('Error calculating overall streak: $e');
     }
   }
 
+  // SECTION: Best Streak Management
+  /// Gets the best overall streak achieved
   Future<int> getOverallBestStreak() async {
     final overallStreakDoc = await _overallBestStreaks.doc(currentUserId).get();
     final overallStreakData = overallStreakDoc.data() as Map<String, dynamic>;
     return overallStreakData['overallBestStreak'] ?? 0;
   }
 
+  /// Updates the best overall streak if current streak is higher
   Future<void> updateOverallBestStreak() async {
     final currentOverallStreak = await getOverAllStreak();
     final overallStreakDoc = await _overallBestStreaks.doc(currentUserId).get();
@@ -377,6 +402,7 @@ class FirebaseService {
     }
   }
 
+  /// Gets the best streak for a specific habit
   Future<int> getHabitBestStreak(String habitId) async {
     try {
       final habitDoc = await _habits.doc(habitId).get();
@@ -395,63 +421,333 @@ class FirebaseService {
 
       return storedBestStreak;
     } catch (e) {
-      // ignore: avoid_print
       print('Error getting habit best streak: $e');
       return 0;
     }
   }
 
+  /// Updates the best streak for a specific habit
   Future<void> updateHabitBestStreak(String habitId, int bestStreak) async {
     try {
       await _habits.doc(habitId).update({'bestStreak': bestStreak});
     } catch (e) {
-      // ignore: avoid_print
       print('Error updating habit best streak: $e');
-      rethrow; // Re-throw the error for the calling function to handle if necessary
+      rethrow;
     }
   }
 
-  /// Deletes a habit and all its associated entries from Firestore.
-  /// @param habitId The unique identifier of the habit to be deleted.
-  /// @return A Future that completes when the deletion is finished.
-  Future<void> deleteHabit(String habitId) async {
-    // Create a new write batch for atomic operations on entries
-    final batch = _firestore.batch();
-
-    try {
-      // Fetch all entries associated with the habit
-      final entries = await _entriesCollection(habitId).get();
-      // Iterate through each entry and add a delete operation to the batch
-      for (var doc in entries.docs) {
-        batch.delete(doc.reference);
-      }
-      // Execute the batch operation to delete all entries atomically
-      await batch.commit();
-      // After all entries are deleted, remove the main habit document
-      await _habits.doc(habitId).delete();
-    } catch (e) {
-      // If any error occurs during the deletion process
-      // ignore: avoid_print
-      print('Error deleting habit: $e');
-      // Re-throw the error as an exception for the caller to handle
-      throw Exception("Error deleting habit :$e");
-    }
-  }
-
+  // SECTION: Habit Management
+  /// Updates a habit's basic information
   Future<void> updateHabit(String habitId, String name, String detail) async {
     try {
       await _habits.doc(habitId).update({'name': name, 'detail': detail});
     } catch (e) {
-      // ignore: avoid_print
       print('Error updating habit: $e');
       rethrow;
     }
   }
 
+  /// Deletes a habit and all its associated entries
+  Future<void> deleteHabit(String habitId) async {
+    final batch = _firestore.batch();
+
+    try {
+      // Delete all entries
+      final entries = await _entriesCollection(habitId).get();
+      for (var doc in entries.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+
+      // Delete the habit document
+      await _habits.doc(habitId).delete();
+    } catch (e) {
+      print('Error deleting habit: $e');
+      throw Exception("Error deleting habit: $e");
+    }
+  }
+
+  // SECTION: Analytics Methods
+  // completion rate for selected timeframe(Main method)
+  Future<List<double>> getCompletionRate(String timeframe) async {
+    List<double> completionRate = [];
+    switch (timeframe) {
+      case 'Week':
+        completionRate = await getWeeklyCompletionRate();
+        break;
+      case 'Month':
+        completionRate = await getMonthlyCompletionRate();
+        break;
+      case '6 Months':
+        completionRate = await getSixMonthCompletionRate();
+        break;
+      case 'Year':
+        completionRate = await getYearlyCompletionRate();
+        break;
+      default:
+        return [];
+    }
+    return completionRate;
+  }
+
+  // completion rate for selected timeframe(sub methods)
+
+  /// Calculates the weekly completion rate for all habits of the current user.
+  /// @return A list of 7 double values representing the completion rate for each day of the week.
+  /// Each value is between 0.0 (no habits completed) and 1.0 (all habits completed).
+  Future<List<double>> getWeeklyCompletionRate() async {
+    try {
+      // Ensure user is authenticated
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final now = DateTime.now();
+      // Calculate the start of the week (Sunday)
+      final startOfWeek = now.subtract(Duration(days: now.weekday));
+
+      // Fetch all habits for the current user
+      final habitRefs =
+          await _habits.where('userId', isEqualTo: currentUserId).get();
+
+      // Initialize an array to store completion rates for each day of the week
+      List<double> completionRates = List.filled(7, 0.0);
+
+      // If no habits exist, return the empty completion rates list
+      if (habitRefs.docs.isEmpty) {
+        return completionRates;
+      }
+
+      // Iterate through each day of the week
+      for (int i = 0; i < 7; i++) {
+        final date = startOfWeek.add(Duration(days: i));
+        // Define the start and end of the day
+        final dayStart = DateTime(date.year, date.month, date.day);
+        final dayEnd = dayStart.add(Duration(days: 1));
+
+        int totalEntries = 0;
+        int completedEntries = 0;
+
+        // Check each habit's entries for the current day
+        for (var habit in habitRefs.docs) {
+          // Query entries for this habit within the day's timeframe
+          final entryRefs = await _entriesCollection(habit.id)
+              .where('date',
+                  isGreaterThanOrEqualTo: Timestamp.fromDate(dayStart))
+              .where('date', isLessThan: Timestamp.fromDate(dayEnd))
+              .get();
+
+          // Count total entries and completed entries
+          totalEntries += entryRefs.docs.length;
+          completedEntries += entryRefs.docs
+              .where((doc) =>
+                  (doc.data() as Map<String, dynamic>)['isCompleted'] == true)
+              .length;
+        }
+
+        // Calculate and store the completion rate for the day
+        // If there are no entries, the completion rate is 0
+        completionRates[i] =
+            totalEntries > 0 ? completedEntries / totalEntries * 100 : 100.0;
+      }
+
+      return completionRates;
+    } catch (e) {
+      // Log the error and rethrow with a more specific message
+      print('Error getting weekly completion rate: $e');
+      throw Exception('Failed to get weekly completion rate: $e');
+    }
+  }
+
+  /// Calculates the monthly completion rate for all habits of the current user.
+  ///
+  /// This function divides the last 30 days into 5 weeks and calculates the
+  /// completion rate for each week. The completion rate is the percentage of
+  /// completed entries out of total entries for the user's habits.
+  ///
+  /// @return A list of 5 double values representing the completion rate for each week.
+  /// Each value is between 0.0 (no habits completed) and 100.0 (all habits completed).
+  Future<List<double>> getMonthlyCompletionRate() async {
+    try {
+      // Verify that the user is authenticated
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Get the current date and calculate the start date of the 30-day period
+      final now = DateTime.now();
+      final startOfMonth = now.subtract(Duration(days: 29));
+      final exactStartOfMonth = DateTime(
+        startOfMonth.year,
+        startOfMonth.month,
+        startOfMonth.day,
+      );
+
+      // Initialize a list to store completion rates for each week (5 weeks total)
+      List<double> completionRate = List.filled(5, 0.0);
+
+      // Fetch all habits associated with the current user from the Firestore collection
+      final habitRefs =
+          await _habits.where('userId', isEqualTo: currentUserId).get();
+
+      // If the user has no habits, return the default completion rates
+      if (habitRefs.docs.isEmpty) return completionRate;
+
+      // Iterate through the 30-day period in increments of 7 days to represent each week
+      for (int i = 0; i < 30; i += 7) {
+        // Calculate the start date of the current week
+        final startOfWeek = exactStartOfMonth.add(Duration(days: i));
+        // Calculate the end date of the current week by adding 7 days
+        DateTime endOfWeek = startOfWeek.add(Duration(days: 7));
+
+        // For the last week, adjust the end date to include the remaining 2 days
+        if (i == 28) {
+          endOfWeek = endOfWeek.add(Duration(days: 2));
+        }
+
+        // Initialize counters for total and completed entries within the current week
+        int totalEntries = 0;
+        int completedEntries = 0;
+
+        // Create a list of asynchronous queries to fetch entries for each habit within the week's timeframe
+        List<Future<QuerySnapshot>> futures = habitRefs.docs.map((habit) {
+          return _entriesCollection(habit.id)
+              .where('date',
+                  isGreaterThanOrEqualTo: Timestamp.fromDate(startOfWeek))
+              .where('date', isLessThan: Timestamp.fromDate(endOfWeek))
+              .get();
+        }).toList();
+
+        // Await all the asynchronous queries to complete and gather their results
+        List<QuerySnapshot> querySnapshots = await Future.wait(futures);
+
+        // Iterate through each snapshot to count total and completed entries
+        for (var snapshot in querySnapshots) {
+          totalEntries += snapshot.docs.length;
+          completedEntries += snapshot.docs
+              .where((doc) =>
+                  (doc.data() as Map<String, dynamic>)['isCompleted'] == true)
+              .length;
+        }
+
+        // Calculate the completion rate for the current week
+        // If there are no entries, assume a completion rate of 100%
+        if (i == 28) {
+          completionRate[4] = totalEntries > 0
+              ? (completedEntries / totalEntries) * 100
+              : 100.0;
+        }
+        completionRate[i ~/ 7] =
+            totalEntries > 0 ? (completedEntries / totalEntries) * 100 : 100.0;
+      }
+
+      // Return the list of completion rates for each week
+      return completionRate;
+    } catch (e) {
+      // Log the error message for debugging purposes
+      print('Error getting monthly completion rate: $e');
+
+      // Return a default list of completion rates in case of an error
+      return List.filled(5, 0.0);
+    }
+  }
+
+  /// Calculates the completion rate for habits over the past six months.
+  ///
+  /// This function performs the following steps:
+  /// 1. Determines the start date for the six-month period.
+  /// 2. Initializes an array to store completion rates for each month.
+  /// 3. Fetches all habits for the current user.
+  /// 4. For each month in the six-month period:
+  ///    a. Calculates the start and end dates for the month.
+  ///    b. Queries all habit entries within the month.
+  ///    c. Counts total entries and completed entries.
+  ///    d. Calculates the completion rate for the month.
+  /// 5. Returns the array of monthly completion rates.
+  ///
+  /// If no habits exist, it returns an array of zeros.
+  /// In case of an error, it logs the error and stack trace, and returns an array of zeros.
+  ///
+  /// @return A Future<List<double>> containing 6 completion rates, one for each month.
+  Future<List<double>> getSixMonthCompletionRate() async {
+    try {
+      // Ensure user is authenticated
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Get current date and calculate the start of the six-month period
+      final now = DateTime.now();
+      final startOfSixMonths = now.subtract(Duration(days: 179));
+      final exactStartOfSixMonths = DateTime(
+          startOfSixMonths.year, startOfSixMonths.month, startOfSixMonths.day);
+
+      // Initialize array to store completion rates
+      List<double> completionRate = List.filled(6, 0.0);
+
+      // Fetch all habits for the current user
+      final habitRefs =
+          await _habits.where('userId', isEqualTo: currentUserId).get();
+
+      // If no habits exist, return the array of zeros
+      if (habitRefs.docs.isEmpty) return completionRate;
+
+      // Iterate through each month in the six-month period
+      for (int i = 0; i < 6; i++) {
+        // Calculate start and end dates for the current month
+        final startOfMonth = exactStartOfSixMonths.add(Duration(days: i * 30));
+        final endOfMonth = startOfMonth.add(Duration(days: 30));
+        int totalEntries = 0;
+        int completedEntries = 0;
+
+        // Create a list of queries to fetch entries for each habit within the month
+        List<Future<QuerySnapshot>> futures = habitRefs.docs.map((habit) {
+          return _entriesCollection(habit.id)
+              .where('date',
+                  isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
+              .where('date', isLessThan: Timestamp.fromDate(endOfMonth))
+              .get();
+        }).toList();
+
+        // Execute all queries concurrently
+        List<QuerySnapshot> querySnapshots = await Future.wait(futures);
+
+        // Count total and completed entries
+        for (var snapshot in querySnapshots) {
+          totalEntries += snapshot.docs.length;
+          completedEntries += snapshot.docs
+              .where((doc) =>
+                  (doc.data() as Map<String, dynamic>)['isCompleted'] == true)
+              .length;
+        }
+
+        // Calculate completion rate for the month
+        completionRate[i] =
+            totalEntries > 0 ? (completedEntries / totalEntries) * 100 : 100.0;
+      }
+
+      return completionRate;
+    } catch (e, stackTrace) {
+      // Log error and stack trace
+      print('Error getting six-month completion rate: $e');
+      print('StackTrace: $stackTrace');
+      // Optionally, you can log the error to an external service here
+      return List.filled(6, 0.0);
+    }
+  }
+
+  Future<List<double>> getYearlyCompletionRate() async {
+    return [];
+  }
+
+  // SECTION: User Data Management
+  /// Clears all data for the current user
   Future<void> clearAllData() async {
     final habits =
         await _habits.where('userId', isEqualTo: currentUserId).get();
     final batch = _firestore.batch();
+
+    // Delete all habits and their entries
     for (var habit in habits.docs) {
       final entries = await _entriesCollection(habit.id).get();
       for (var entry in entries.docs) {
@@ -459,11 +755,14 @@ class FirebaseService {
       }
       batch.delete(habit.reference);
     }
+
+    // Delete streak data
     final overallStreaks = await _overallStreaks.doc(currentUserId).get();
     batch.delete(overallStreaks.reference);
     final overallBestStreaks =
         await _overallBestStreaks.doc(currentUserId).get();
     batch.delete(overallBestStreaks.reference);
+
     try {
       await batch.commit();
     } catch (e) {
@@ -471,6 +770,8 @@ class FirebaseService {
       throw Exception('Error clearing all data: $e');
     }
   }
+
+  /// Logs out the current user and navigates to login screen
   Future<void> logOut(BuildContext context) async {
     try {
       await _auth.signOut();

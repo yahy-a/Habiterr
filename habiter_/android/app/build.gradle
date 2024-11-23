@@ -6,11 +6,14 @@ plugins {
 }
 
 android {
+    compileSdk 34
     namespace = "com.example.habiter_"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // Flag to enable support for the new language APIs
+        coreLibraryDesugaringEnabled true
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
@@ -31,6 +34,7 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         minSdkVersion 23
+        multiDexEnabled true
     }
 
     buildTypes {
@@ -47,6 +51,9 @@ flutter {
 }
 
 dependencies {
+    // for desguaring
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.2.2'
+
     // Firebase Analytics dependency
     implementation 'com.google.firebase:firebase-analytics:21.2.0'
 

@@ -6,6 +6,8 @@ import 'package:habiter_/providers/notification_service.dart';
 import 'package:habiter_/providers/preferences_service.dart';
 import 'package:habiter_/screens/signIn/change.dart';
 import 'package:provider/provider.dart';
+
+
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
