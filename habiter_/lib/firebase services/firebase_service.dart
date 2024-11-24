@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:habiter_/models/habit.dart';
 import 'package:habiter_/screens/signIn/login.dart';
@@ -165,6 +166,7 @@ class FirebaseService {
   void _addEntryToBatch(WriteBatch batch, String habitId, DateTime date) {
     final entryRef = _entriesCollection(habitId).doc();
     batch.set(entryRef, {
+      'userId': currentUserId,
       'habitId': habitId,
       'date': date,
       'isCompleted': false,
@@ -217,6 +219,54 @@ class FirebaseService {
 
       return habits;
     });
+  }
+
+  // SECTION: Entry Retrieval
+  /// Fetches all habit entries for a specific date range
+  /// @param startDate The start date of the range (inclusive)
+  /// @param endDate The end date of the range (inclusive)
+  /// @return List of HabitEntry objects within the date range
+  Future<List<HabitEntry>> getEntriesForDateRange({
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    try {
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Convert dates to UTC to ensure consistent querying
+      final startUtc = DateTime.utc(
+        startDate.year,
+        startDate.month,
+        startDate.day,
+      );
+      final endUtc = DateTime.utc(
+        endDate.year,
+        endDate.month,
+        endDate.day,
+        23, 59, 59  // Include the entire end day
+      );
+
+      // Query all entries collections at once using a Collection Group Query
+      final QuerySnapshot entriesSnapshot = await FirebaseFirestore.instance
+          .collectionGroup('entries')
+          .where('userId', isEqualTo: currentUserId)
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startUtc))
+          .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endUtc))
+          .orderBy('date', descending: true)  // Optional: sort by date
+          .get();
+
+      // Convert snapshots to HabitEntry objects
+      return entriesSnapshot.docs
+          .map((doc) => HabitEntry.fromDocument(doc))
+          .toList();
+
+    } catch (e, stackTrace) {
+      print('Error fetching entries for date range: $e');
+      print('StackTrace: $stackTrace');
+      return [];
+    }
   }
 
   // SECTION: Habit Completion Management
@@ -308,65 +358,101 @@ class FirebaseService {
   }
 
   /// Updates the overall streak based on all habits' completion
+  /// Updates the overall streak across all habits for the current user.
+  ///
+  /// This function performs the following steps:
+  /// 1. Checks if the user is authenticated.
+  /// 2. Calculates the start and end of the current day.
+  /// 3. Fetches all habit entries for the current user, ordered by date descending.
+  /// 4. Determines the last day when a habit was not completed (break day).
+  /// 5. Calculates the overall streak based on the days since the last break.
+  /// 6. Updates the overall streak in Firestore.
+  ///
+  /// @throws Exception if the user is not authenticated or if there's an error fetching entries or updating the streak.
   Future<void> updateOverAllStreak() async {
     try {
+      // Ensure user is authenticated
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Calculate start and end of current day
       final now = DateTime.now();
       final startOfDay = DateTime(now.year, now.month, now.day);
       final endOfDay = startOfDay.add(Duration(days: 1));
 
-      // Get all habits for current user
-      final habits =
-          await _habits.where('userId', isEqualTo: currentUserId).get();
+      // Fetch all entries for the current user
+      final QuerySnapshot entriesSnapshot;
+      try {
+        entriesSnapshot = await FirebaseFirestore.instance
+            .collectionGroup('entries')
+            .where('userId', isEqualTo: currentUserId)
+            .where('date', isLessThanOrEqualTo: endOfDay)
+            .orderBy('date', descending: true)
+            .get();
+      } catch (e) {
+        throw Exception('Failed to fetch entries: $e');
+      }
 
-      if (habits.docs.isEmpty) return;
+      // If no entries found, exit early
+      if (entriesSnapshot.docs.isEmpty) return;
 
       DateTime lastBreakDay = endOfDay;
       bool foundIncomplete = false;
 
-      // Check each habit's entries
-      for (var habit in habits.docs) {
-        final entries = await _entriesCollection(habit.id)
-            .where('date', isLessThanOrEqualTo: endOfDay)
-            .orderBy('date', descending: true)
-            .get();
-
-        if (entries.docs.isNotEmpty) {
-          // Find first incomplete entry
-          for (var entry in entries.docs) {
-            final entryData = entry.data() as Map<String, dynamic>;
-            final entryDate = (entryData['date'] as Timestamp).toDate();
-
-            if (entryData['isCompleted'] == false) {
-              foundIncomplete = true;
-              if (entryDate.isAfter(lastBreakDay)) {
-                lastBreakDay =
-                    DateTime(entryDate.year, entryDate.month, entryDate.day);
-              }
-              break;
-            }
+      // Iterate through entries to find the last break day
+      if (entriesSnapshot.docs.isNotEmpty) {
+        for (var entry in entriesSnapshot.docs) {
+          final entryData = entry.data() as Map<String, dynamic>;
+          // Validate entry data
+          if (!entryData.containsKey('date') || !entryData.containsKey('isCompleted')) {
+            print('Warning: Entry ${entry.id} has invalid data');
+            continue;
           }
+          final entryDate = (entryData['date'] as Timestamp).toDate();
 
-          // Handle case with no incomplete entries
-          if (!foundIncomplete && entries.docs.isNotEmpty) {
-            final oldestEntry = entries.docs.last;
-            final oldestEntryData = oldestEntry.data() as Map<String, dynamic>;
-            final oldestDate = (oldestEntryData['date'] as Timestamp).toDate();
-
-            if (oldestDate.isBefore(lastBreakDay)) {
+          // If an incomplete entry is found, update lastBreakDay
+          if (entryData['isCompleted'] == false) {
+            foundIncomplete = true;
+            if (entryDate.isAfter(lastBreakDay)) {
               lastBreakDay =
-                  DateTime(oldestDate.year, oldestDate.month, oldestDate.day);
+                  DateTime(entryDate.year, entryDate.month, entryDate.day);
             }
+            break;
+          }
+        }
+
+        // Handle case where all entries are complete
+        if (!foundIncomplete && entriesSnapshot.docs.isNotEmpty) {
+          final oldestEntry = entriesSnapshot.docs.last;
+          final oldestEntryData = oldestEntry.data() as Map<String, dynamic>;
+          if (!oldestEntryData.containsKey('date')) {
+            throw Exception('Oldest entry has invalid data');
+          }
+          final oldestDate = (oldestEntryData['date'] as Timestamp).toDate();
+
+          // Update lastBreakDay to the oldest entry date if it's earlier
+          if (oldestDate.isBefore(lastBreakDay)) {
+            lastBreakDay =
+                DateTime(oldestDate.year, oldestDate.month, oldestDate.day);
           }
         }
       }
-
-      // Calculate and update overall streak
+      // Calculate the overall streak
       final daysSinceLastBreak = endOfDay.difference(lastBreakDay).inDays;
-      await _overallStreaks
-          .doc(currentUserId)
-          .set({'overallStreak': daysSinceLastBreak});
+      try {
+        // Update the overall streak in Firestore
+        await _overallStreaks
+            .doc(currentUserId)
+            .set({'overallStreak': daysSinceLastBreak});
+      } catch (e) {
+        throw Exception('Failed to update overall streak: $e');
+      }
     } catch (e) {
+      // Log any errors that occur during the process
       print('Error calculating overall streak: $e');
+      // Optionally, you can rethrow the exception here if you want it to propagate
+      // throw e;
     }
   }
 
@@ -485,6 +571,7 @@ class FirebaseService {
         completionRate = await getYearlyCompletionRate();
         break;
       default:
+        print('Invalid timeframe: $timeframe');
         return [];
     }
     return completionRate;
@@ -526,23 +613,16 @@ class FirebaseService {
         final dayEnd = dayStart.add(Duration(days: 1));
 
         int totalEntries = 0;
-        int completedEntries = 0;
+        int completedEntries = 0  ;
 
-        // Check each habit's entries for the current day
-        for (var habit in habitRefs.docs) {
-          // Query entries for this habit within the day's timeframe
-          final entryRefs = await _entriesCollection(habit.id)
-              .where('date',
-                  isGreaterThanOrEqualTo: Timestamp.fromDate(dayStart))
-              .where('date', isLessThan: Timestamp.fromDate(dayEnd))
-              .get();
+        final listOfEntries = await getEntriesForDateRange(
+            startDate: dayStart, endDate: dayEnd);
 
-          // Count total entries and completed entries
-          totalEntries += entryRefs.docs.length;
-          completedEntries += entryRefs.docs
-              .where((doc) =>
-                  (doc.data() as Map<String, dynamic>)['isCompleted'] == true)
-              .length;
+        for (var entry in listOfEntries) {
+          totalEntries++;
+          if (entry.isCompleted) {
+            completedEntries++;
+          }
         }
 
         // Calculate and store the completion rate for the day
@@ -583,6 +663,8 @@ class FirebaseService {
         startOfMonth.day,
       );
 
+      final monthDays = 30;
+
       // Initialize a list to store completion rates for each week (5 weeks total)
       List<double> completionRate = List.filled(5, 0.0);
 
@@ -594,49 +676,44 @@ class FirebaseService {
       if (habitRefs.docs.isEmpty) return completionRate;
 
       // Iterate through the 30-day period in increments of 7 days to represent each week
-      for (int i = 0; i < 30; i += 7) {
+      for (int i = 0; i < monthDays; i += 7) {
         // Calculate the start date of the current week
         final startOfWeek = exactStartOfMonth.add(Duration(days: i));
         // Calculate the end date of the current week by adding 7 days
         DateTime endOfWeek = startOfWeek.add(Duration(days: 7));
 
         // For the last week, adjust the end date to include the remaining 2 days
-        if (i == 28) {
-          endOfWeek = endOfWeek.add(Duration(days: 2));
-        }
 
         // Initialize counters for total and completed entries within the current week
         int totalEntries = 0;
         int completedEntries = 0;
 
-        // Create a list of asynchronous queries to fetch entries for each habit within the week's timeframe
-        List<Future<QuerySnapshot>> futures = habitRefs.docs.map((habit) {
-          return _entriesCollection(habit.id)
-              .where('date',
-                  isGreaterThanOrEqualTo: Timestamp.fromDate(startOfWeek))
-              .where('date', isLessThan: Timestamp.fromDate(endOfWeek))
-              .get();
-        }).toList();
+        final listOfEntries = await getEntriesForDateRange(
+            startDate: startOfWeek, endDate: endOfWeek);
 
-        // Await all the asynchronous queries to complete and gather their results
-        List<QuerySnapshot> querySnapshots = await Future.wait(futures);
-
-        // Iterate through each snapshot to count total and completed entries
-        for (var snapshot in querySnapshots) {
-          totalEntries += snapshot.docs.length;
-          completedEntries += snapshot.docs
-              .where((doc) =>
-                  (doc.data() as Map<String, dynamic>)['isCompleted'] == true)
-              .length;
+        for (var entry in listOfEntries) {
+          totalEntries++;
+          if (entry.isCompleted) {
+            completedEntries++;
+          }
+        }
+        if (i == 28) {
+          final startOfLastWeek = endOfWeek;
+          final endOfLastWeek = startOfLastWeek.add(Duration(days: 2));
+          final listOfEntries = await getEntriesForDateRange(
+              startDate: startOfLastWeek, endDate: endOfLastWeek);
+          for (var entry in listOfEntries) {
+            totalEntries++;
+            if (entry.isCompleted) {
+              completedEntries++;
+            }
+          }
+          completionRate[4] =
+              totalEntries > 0 ? (completedEntries / totalEntries) * 100 : 100.0;
         }
 
         // Calculate the completion rate for the current week
         // If there are no entries, assume a completion rate of 100%
-        if (i == 28) {
-          completionRate[4] = totalEntries > 0
-              ? (completedEntries / totalEntries) * 100
-              : 100.0;
-        }
         completionRate[i ~/ 7] =
             totalEntries > 0 ? (completedEntries / totalEntries) * 100 : 100.0;
       }
@@ -701,24 +778,15 @@ class FirebaseService {
         int completedEntries = 0;
 
         // Create a list of queries to fetch entries for each habit within the month
-        List<Future<QuerySnapshot>> futures = habitRefs.docs.map((habit) {
-          return _entriesCollection(habit.id)
-              .where('date',
-                  isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
-              .where('date', isLessThan: Timestamp.fromDate(endOfMonth))
-              .get();
-        }).toList();
-
-        // Execute all queries concurrently
-        List<QuerySnapshot> querySnapshots = await Future.wait(futures);
+        final listOfEntries = await getEntriesForDateRange(
+            startDate: startOfMonth, endDate: endOfMonth);
 
         // Count total and completed entries
-        for (var snapshot in querySnapshots) {
-          totalEntries += snapshot.docs.length;
-          completedEntries += snapshot.docs
-              .where((doc) =>
-                  (doc.data() as Map<String, dynamic>)['isCompleted'] == true)
-              .length;
+        for (var entry in listOfEntries) {
+          totalEntries++;
+          if (entry.isCompleted) {
+            completedEntries++;
+          }
         }
 
         // Calculate completion rate for the month
@@ -736,8 +804,64 @@ class FirebaseService {
     }
   }
 
+  /// Calculates the yearly completion rate for habits over the last 365 days
+  /// Returns a list of 12 double values representing monthly completion rates
   Future<List<double>> getYearlyCompletionRate() async {
-    return [];
+    try {
+      // Ensure user is authenticated
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final now = DateTime.now();
+      final startOfYear = now.subtract(Duration(days: 364));
+      final exactStartOfYear = DateTime(
+        startOfYear.year,
+        startOfYear.month,
+        startOfYear.day,
+      );
+      List<double> completionRate = List.filled(12, 0.0);
+
+      // Fetch all habits for the current user
+      final habitRefs =
+          await _habits.where('userId', isEqualTo: currentUserId).get();
+      
+      // If no habits exist, return the array of zeros
+      if (habitRefs.docs.isEmpty) return completionRate;
+
+      // Iterate through each month in the year
+      for (int i = 0; i < 12; i++) {
+        // Calculate start and end dates for the current month (30-day period)
+        final startOfMonth = exactStartOfYear.add(Duration(days: i * 30));
+        final endOfMonth = startOfMonth.add(Duration(days: 30));
+        int totalEntries = 0;
+        int completedEntries = 0;
+
+        // Fetch entries for the current month
+        final listOfEntries = await getEntriesForDateRange(
+            startDate: startOfMonth, endDate: endOfMonth);
+
+        // Count total and completed entries
+        for (var entry in listOfEntries) {
+          totalEntries++;
+          if (entry.isCompleted) {
+            completedEntries++;
+          }
+        }
+        
+        // Calculate completion rate for the month
+        completionRate[i] =
+            totalEntries > 0 ? (completedEntries / totalEntries) * 100 : 100.0;
+      }
+
+      return completionRate;
+    } catch (e, stackTrace) {
+      // Log error and stack trace
+      print('Error getting yearly completion rate: $e');
+      print('StackTrace: $stackTrace');
+      // Optionally, you can log the error to an external service here
+      return List.filled(12, 0.0);
+    }
   }
 
   // SECTION: User Data Management
